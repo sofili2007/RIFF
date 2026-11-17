@@ -748,7 +748,7 @@ function cargarLeaflet() {
 }
 function mapaBase(L, contenedor, centro, zoom = 12) {
   const mapa = L.map(contenedor, { zoomControl: false, attributionControl: true }).setView([centro.lat, centro.lng], zoom);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { maxZoom: 19, attribution: "© OpenStreetMap · © CARTO" }).addTo(mapa);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© colaboradores de OpenStreetMap" }).addTo(mapa);
   return mapa;
 }
 async function pantallaMapa() {

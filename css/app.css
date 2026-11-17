@@ -1,0 +1,52 @@
+/* RIFF · app.css
+   Estilos de la app funcional (se suman a prototipo.css, no lo reemplazan):
+   pantalla completa en celular, campos de texto reales, mapa real y avisos. */
+
+/* En celular la app ocupa toda la pantalla (sin marco de teléfono ni barra de estado falsa) */
+@media (max-width: 720px) {
+  html, body { height: 100%; }
+  .escenario { padding: 0; min-height: 100dvh; }
+  .telefono { width: 100vw; height: 100dvh; border-radius: 0; box-shadow: none; }
+  .barra-estado { visibility: hidden; }
+}
+/* En computador el teléfono cabe en la ventana */
+@media (min-width: 721px) and (max-height: 860px) {
+  .telefono { height: calc(100vh - 48px); }
+}
+.indicador-inicio { pointer-events: none; }
+
+/* Campos de texto reales dentro de las cajas del diseño */
+.caja input, .caja textarea, .caja select {
+  flex: 1; min-width: 0; background: none; border: 0; outline: 0; color: var(--texto);
+  font: 400 16px/1.5 var(--f-texto); padding: 0; resize: none; color-scheme: dark;
+}
+.caja textarea { min-height: 72px; }
+.caja input::placeholder, .caja textarea::placeholder { color: var(--texto-tenue); }
+.caja:focus-within { border: 2px solid var(--primario); padding: 11px 15px; }
+.caja.error:focus-within { border-color: var(--peligro); }
+.ayuda.error-texto { color: var(--acento); }
+.busqueda input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; color: #fff; font: 400 16px/1.5 var(--f-texto); }
+.boton[disabled], .boton.deshabilitado { pointer-events: none; }
+.boton.cargando { opacity: .6; pointer-events: none; }
+.chip, .segmentado > *, [data-accion] { cursor: pointer; user-select: none; }
+.oculto { display: none !important; }
+.rosa-texto { color: var(--primario); }
+
+/* Mapa real (Leaflet) */
+.mapa-real { position: absolute; inset: 0; z-index: 1; background: #1b1320; }
+.mapa-real .leaflet-tile-pane { filter: saturate(.7); }
+.leaflet-container { font-family: var(--f-texto); }
+.pin-riff { position: relative !important; width: 46px !important; height: 46px !important; }
+.pin-riff .pin { left: 0; top: 0; }
+.yo-riff .yo { left: -28px; top: -28px; }
+.hoja.abierta { max-height: 70%; overflow-y: auto; }
+.hoja .lista-mapa { margin-top: 12px; padding-bottom: 100px; }
+.boton-ubicacion { position: absolute; right: 16px; top: 60px; z-index: 21; }
+.mapa-mini { height: 160px; border-radius: var(--radio-control); overflow: hidden; position: relative; }
+
+/* Avisos flotantes */
+.aviso-flotante { position: absolute; left: 16px; right: 16px; bottom: 100px; z-index: 70; }
+.mensaje-vacio { text-align: center; padding: 32px 8px; }
+
+/* Gráfica de métricas */
+.grafica { width: 100%; height: 150px; margin-top: 12px; }

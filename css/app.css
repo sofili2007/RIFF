@@ -85,3 +85,12 @@
 
 /* Imágenes nítidas */
 .card-evento .portada, .fila-evento .miniatura, .avatar { image-rendering: auto; background-size: cover; }
+
+/* Fotos de artista pequeñas: fondo difuminado + foto nítida en círculo (no se ven pixeladas) */
+.baja { position: relative; overflow: hidden; }
+.baja::before { content: ""; position: absolute; inset: -24px; background: inherit; background-size: cover; filter: blur(18px) brightness(.55) saturate(1.2); z-index: 0; }
+.foto-artista { position: absolute; left: 50%; top: 50%; width: 112px; height: 112px; transform: translate(-50%, -50%); border-radius: 50%;
+  background: center / cover no-repeat; border: 3px solid var(--primario); box-shadow: 0 10px 30px rgba(0,0,0,.45); z-index: 1; }
+.foto-artista.grande { width: 132px; height: 132px; top: 46%; }
+.baja .guardar { z-index: 2; }
+.baja > div { z-index: 1; }

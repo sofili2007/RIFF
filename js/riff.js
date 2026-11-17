@@ -322,9 +322,9 @@ pantallas["selecciona-perfil"] = async () => {
   const u = await usuario(); if (!u) return;
   const p = await perfil();
   const nota = document.createElement("p");
-  nota.className = "p14 suave centro mt24";
+  nota.className = "p14 suave mt16";
   nota.innerHTML = `Ya iniciaste sesión como ${esc(p?.correo || u.email)}. <a class="enlace" href="${p?.rol === "organizador" ? "org-panel.html" : "feed.html"}">Continuar</a>`;
-  $(".pila", pantalla).after(nota);
+  $(".pila", pantalla).before(nota);
 };
 
 // ---------- crear cuenta e iniciar sesión (público y organizador) ----------

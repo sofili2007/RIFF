@@ -94,3 +94,7 @@
 .foto-artista.grande { width: 132px; height: 132px; top: 46%; }
 .baja .guardar { z-index: 2; }
 .baja > div { z-index: 1; }
+
+/* «¿cómo quieres usar riff?»: el aviso de términos nunca tapa las tarjetas */
+#selecciona-perfil .contenido { bottom: 72px; }
+#selecciona-perfil > p.centro { bottom: 16px !important; }

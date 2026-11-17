@@ -1,36 +1,39 @@
 // RIFF · app.js
-// Comportamiento de la app. Por ahora es el mínimo para navegar el prototipo dividido:
-// volver, pantallas que avanzan solas, links dentro de tarjetas y chips que se marcan.
-// Los datos simulados irán en js/data.js a medida que cada pantalla se construya con el kit.
+// Puerta de entrada del comportamiento. Todas las pantallas cargan este archivo.
+// 1) Navegación básica del prototipo (volver, links dentro de tarjetas, chips).
+// 2) Carga riff.js, que conecta cada pantalla con la base de datos (Supabase).
 
 const enPages = location.pathname.includes("/pages/");
 const raiz = enPages ? "../" : "";
 
+// Estilos de la app funcional
+const estilos = document.createElement("link");
+estilos.rel = "stylesheet";
+estilos.href = raiz + "css/app.css";
+document.head.appendChild(estilos);
+
 document.addEventListener("click", (evento) => {
   const el = evento.target.closest("[data-href], [data-volver], [data-url], [data-alternar]");
-  if (!el) return;
+  if (!el || el.closest("[data-riff]")) return; // riff.js se encarga de esos elementos
 
-  // Chips de filtros y gustos: se marcan y desmarcan
   if (el.dataset.alternar !== undefined) {
     evento.preventDefault();
     el.classList.toggle("sel");
+    el.dispatchEvent(new CustomEvent("riff:alternado", { bubbles: true }));
     return;
   }
-  // Links externos que están dentro de otro link (página de venta, mapas)
   if (el.dataset.url) {
     evento.preventDefault();
     evento.stopPropagation();
     window.open(el.dataset.url, "_blank", "noopener");
     return;
   }
-  // Botón volver: regresa a la pantalla anterior, o al inicio si se abrió directo
   if (el.dataset.volver !== undefined) {
     evento.preventDefault();
     if (history.length > 1 && document.referrer) history.back();
     else location.href = raiz + "index.html";
     return;
   }
-  // Un link dentro de otro (por ejemplo «guardar» dentro de una tarjeta de evento)
   if (el.dataset.href) {
     evento.preventDefault();
     evento.stopPropagation();
@@ -38,9 +41,12 @@ document.addEventListener("click", (evento) => {
   }
 });
 
-// Pantallas que avanzan solas (splash, cargando, importando gustos)
+// Pantallas que avanzan solas (cargando, importando gustos).
+// El splash lo decide riff.js, porque depende de si hay sesión abierta.
 const automatica = document.querySelector("[data-auto]");
-if (automatica) {
+if (automatica && !/splash/.test(automatica.id)) {
   const [destino, espera] = automatica.dataset.auto.split(",");
-  setTimeout(() => (location.href = destino), Number(espera));
+  setTimeout(() => (location.href = destino + location.search), Number(espera));
 }
+
+import(raiz + "js/riff.js").catch((error) => console.error("RIFF no pudo cargar", error));

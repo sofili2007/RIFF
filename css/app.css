@@ -4,9 +4,9 @@
 
 /* En celular la app ocupa toda la pantalla (sin marco de teléfono ni barra de estado falsa) */
 @media (max-width: 720px) {
-  html, body { height: 100%; }
-  .escenario { padding: 0; min-height: 100dvh; }
-  .telefono { width: 100vw; height: 100dvh; border-radius: 0; box-shadow: none; }
+  html, body { height: 100%; margin: 0; overflow: hidden; }
+  .escenario { display: block; padding: 0; min-height: 0; height: 100%; }
+  .telefono { border-radius: 0; box-shadow: none; }
   .barra-estado { visibility: hidden; }
 }
 /* En computador el teléfono cabe en la ventana */

@@ -410,7 +410,7 @@ pantallas["iniciar-sesion"] = () => formularioIngreso({ organizador: false });
 pantallas["org-iniciar-sesion"] = () => formularioIngreso({ organizador: true });
 
 // ---------- gustos ----------
-const GENEROS = ["Trap latino", "Reggaetón", "Urbano", "Trap argentino", "Rap", "Hip hop", "Pop latino", "Electrónica", "House", "Salsa", "Rock", "Metal", "Cumbia", "Indie", "Jazz", "Clásica"];
+const GENEROS = ["Trap latino", "Reggaetón", "Urbano", "Trap argentino", "Rap", "Hip hop", "Pop latino", "Electrónica", "House", "Salsa", "Rock", "Metal", "Cumbia", "Indie", "Jazz", "Clásica", "Folclor", "Popular"];
 pantallas["gustos-manual"] = async () => {
   await exigirSesion();
   const p = await perfil();

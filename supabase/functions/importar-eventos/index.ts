@@ -36,6 +36,11 @@ const VENUES: [RegExp, { lat: number; lng: number; tipo: string; nombre?: string
   [/corferias/i, { lat: 4.6297, lng: -74.0905, tipo: "Al aire libre" }],
   [/sim[oó]n bol[ií]var/i, { lat: 4.6580, lng: -74.0935, tipo: "Al aire libre" }],
   [/coliseo/i, { lat: 4.7176, lng: -74.0716, tipo: "Arena" }],
+  [/ensue[nñ]o/i, { lat: 4.5875, lng: -74.1577, tipo: "Teatro" }],
+  [/planetario/i, { lat: 4.6121, lng: -74.0688, tipo: "Teatro" }],
+  [/capital live/i, { lat: 4.6360, lng: -74.0655, tipo: "Bar" }],
+  [/doctor ang[eé]lico/i, { lat: 4.6573, lng: -74.0555, tipo: "Teatro" }],
+  [/montessori/i, { lat: 4.7623, lng: -74.0390, tipo: "Teatro" }],
 ];
 const BOGOTA = { lat: 4.6533, lng: -74.0836 };
 

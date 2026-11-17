@@ -250,7 +250,7 @@ function chipNuevo(texto, sel = false, extraClase = "") {
 // Tarjetas y filas de eventos (con la misma estructura del diseño)
 function tarjetaEvento(ev, guardado) {
   return `<a class="card-evento" href="${linkEvento(ev)}">
-    <div class="portada" style="background-image:url('${imagen(ev.portada)}')">
+    <div class="portada${/artista-/.test(ev.portada) ? " baja" : ""}" style="background-image:url('${imagen(ev.portada)}')">${/artista-/.test(ev.portada) ? `<span class="foto-artista" style="background-image:url('${imagen(ev.portada)}')"></span>` : ""}
       <button class="guardar${guardado ? " rosa" : ""}" data-guardar="${ev.id}" aria-label="Guardar">${ic("bookmark", "s18", guardado)}</button></div>
     <div class="info"><h3 class="titulo">${esc(ev.titulo)}</h3>
       <p class="meta">${ic("calendar", "s16")}<span>${esc(fFecha(ev))}</span></p>
@@ -636,7 +636,9 @@ pantallas["evento"] = async () => {
   document.title = "RIFF · " + ev.titulo;
   metrica(ev.id, "vista");
   const p = await perfil();
-  $("div[style*='height:220px']", contenido).style.backgroundImage = `url('${imagen(ev.portada)}')`;
+  const cabecera = $("div[style*='height:220px']", contenido);
+  cabecera.style.backgroundImage = `url('${imagen(ev.portada)}')`;
+  if (/artista-/.test(ev.portada)) { cabecera.classList.add("baja"); cabecera.insertAdjacentHTML("beforeend", `<span class="foto-artista grande" style="background-image:url('${imagen(ev.portada)}')"></span>`); }
   $("h1", contenido).textContent = ev.titulo;
   $(".fila.g6.mt12", contenido).innerHTML = [...ev.generos.slice(0, 2).map((g) => `<span class="badge genero">${esc(g)}</span>`), `<span class="badge venue">${esc(ev.tipo_venue)}</span>`, `<span class="badge edad">${esc(ev.edad)}</span>`].join("");
   const filas = $$(".tarjeta .fila.g16", contenido);

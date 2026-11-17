@@ -34,7 +34,7 @@
 
 /* Mapa real (Leaflet) */
 .mapa-real { position: absolute; inset: 0; z-index: 1; background: #1b1320; }
-.mapa-real .leaflet-tile-pane { filter: saturate(.7); }
+.mapa-real .leaflet-tile-pane, .mapa-mini .leaflet-tile-pane { filter: invert(1) hue-rotate(200deg) brightness(.75) saturate(.5); }
 .leaflet-container { font-family: var(--f-texto); }
 .pin-riff { position: relative !important; width: 46px !important; height: 46px !important; }
 .pin-riff .pin { left: 0; top: 0; }

@@ -25,12 +25,12 @@ export async function iniciarSpotify(desde = "") {
 }
 
 // Géneros de Spotify (en inglés y muy específicos) -> géneros de RIFF
-const MAPA = [
-  [/reggaeton|reggaetón|urbano latino|perreo/, "Reggaetón"], [/trap latino|latin trap/, "Trap latino"],
+export const MAPA = [
+  [/reggaeton|reggaetón|urbano latino|perreo|música urbana/, "Reggaetón"], [/trap latino|latin trap/, "Trap latino"],
   [/trap argentino|argentine trap|rkt/, "Trap argentino"], [/hip hop|hip-hop/, "Hip hop"], [/rap/, "Rap"],
-  [/latin pop|pop latino|latin/, "Pop latino"], [/house/, "House"], [/techno|edm|electro|electronic|dance/, "Electrónica"],
-  [/salsa|son cubano|timba/, "Salsa"], [/cumbia|champeta|vallenato/, "Cumbia"], [/metal/, "Metal"], [/rock|punk|grunge/, "Rock"],
-  [/indie|alternative|alternativ/, "Indie"], [/jazz|bossa/, "Jazz"], [/classical|orchestra|cl[aá]sica|opera/, "Clásica"], [/urban|urbano/, "Urbano"],
+  [/latin pop|pop latino|latin/, "Pop latino"], [/house/, "House"], [/techno|edm|electro|electronic|electrónica|dance/, "Electrónica"],
+  [/salsa|son cubano|timba|tropical/, "Salsa"], [/cumbia|champeta|vallenato/, "Cumbia"], [/metal/, "Metal"], [/rock|punk|grunge/, "Rock"],
+  [/indie|alternative|alternativ/, "Indie"], [/jazz|bossa/, "Jazz"], [/classical|orchestra|cl[aá]sica|opera|ópera/, "Clásica"], [/urban|urbano/, "Urbano"],
 ];
 
 export async function importarSpotify(code) {

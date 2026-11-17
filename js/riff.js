@@ -7,6 +7,7 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 import { SUPABASE_URL, SUPABASE_KEY } from "./config.js";
 import { spotifyListo, iniciarSpotify, importarSpotify, pintarVinculado } from "./spotify.js";
+import { appleToken, prepararApple, vincularApple } from "./apple.js";
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 const enPages = location.pathname.includes("/pages/");
@@ -429,7 +430,8 @@ pantallas["gustos-manual"] = async () => {
 };
 async function vinculado(servicio) {
   await exigirSesion();
-  const real = servicio === "spotify" && (() => { try { return JSON.parse(sessionStorage.getItem("riff_spotify")); } catch { return null; } })();
+  const real = (() => { try { return JSON.parse(sessionStorage.getItem(servicio === "spotify" ? "riff_spotify" : "riff_apple")); } catch { return null; } })();
+  if (servicio === "apple music" && !real) return ir("vincular-gustos.html");
   if (real) pintarVinculado(pantalla, real, chipNuevo);
   const artistas = $$(".avatar + .p12", pantalla).map((s) => s.textContent.trim());
   const chips = $(".chips", pantalla);
@@ -449,13 +451,26 @@ pantallas["vinculado-spotify"] = () => vinculado("spotify");
 pantallas["vinculado-apple-music"] = () => vinculado("apple music");
 pantallas["vincular-gustos"] = async () => {
   await exigirSesion();
-  $("a.boton.apple", pantalla)?.remove(); $(".app-apple", pantalla)?.remove();
-  const intro = $("p.cuerpo", pantalla);
-  if (intro) intro.textContent = "Conecta Spotify y te recomendamos conciertos de los artistas y géneros que más escuchas.";
+  const botonApple = $("a.boton.apple", pantalla);
+  if (await appleToken()) {
+    prepararApple().catch(() => {});
+    if (botonApple) botonApple.onclick = async (e) => {
+      e.preventDefault();
+      try {
+        const datos = await vincularApple();
+        sessionStorage.setItem("riff_apple", JSON.stringify(datos));
+        ir("vinculado-apple-music.html" + (params.get("desde") ? "?desde=" + params.get("desde") : ""));
+      } catch (error) { aviso(error?.message || "No se vinculó Apple Music. Intenta de nuevo."); }
+    };
+  } else {
+    botonApple?.remove(); $(".app-apple", pantalla)?.remove();
+    const intro = $("p.cuerpo", pantalla);
+    if (intro) intro.textContent = "Conecta Spotify y te recomendamos conciertos de los artistas y géneros que más escuchas.";
+  }
   const boton = $("a.boton.spotify", pantalla);
   if (boton && spotifyListo()) boton.onclick = (e) => { e.preventDefault(); iniciarSpotify(params.get("desde") || ""); };
 };
-["apple-music-permiso", "apple-music-importando", "vinculado-apple-music"].forEach((id) => (pantallas[id] = () => ir("vincular-gustos.html")));
+["apple-music-permiso", "apple-music-importando"].forEach((id) => (pantallas[id] = () => ir("vincular-gustos.html")));
 pantallas["spotify-autorizacion"] = () => { if (spotifyListo()) iniciarSpotify(); };
 pantallas["spotify-importando"] = async () => {
   listo();

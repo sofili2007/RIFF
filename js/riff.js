@@ -6,6 +6,7 @@
 
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 import { SUPABASE_URL, SUPABASE_KEY } from "./config.js";
+import { spotifyListo, iniciarSpotify, importarSpotify, pintarVinculado } from "./spotify.js";
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 const enPages = location.pathname.includes("/pages/");
@@ -15,7 +16,8 @@ const params = new URLSearchParams(location.search);
 const pantalla = document.querySelector("section.pantalla");
 const $ = (sel, base = document) => base.querySelector(sel);
 const $$ = (sel, base = document) => [...base.querySelectorAll(sel)];
-const ir = (pagina) => (location.href = pg + pagina);
+let saliendo = false;
+const ir = (pagina) => { saliendo = true; location.href = pg + pagina; };
 const BOGOTA = { lat: 4.6533, lng: -74.0836 };
 
 // ---------- íconos propios (para no depender del sprite de cada página) ----------
@@ -306,12 +308,15 @@ function dentroDelPresupuesto(ev, p) {
 const pantallas = {};
 
 // ---------- splash ----------
+// Siempre: animación con el logo y luego «¿cómo quieres usar riff?»
 pantallas["splash-entrada"] = pantallas["splash"] = async () => {
-  const destino = pantalla.dataset.auto?.split(",")[0];
-  const [u] = await Promise.all([usuario(), new Promise((r) => setTimeout(r, 1200))]);
-  if (!u) return (location.href = destino);
-  const p = await perfil();
-  ir(p?.rol === "organizador" ? "org-panel.html" : "feed.html");
+  pantalla.innerHTML = '<div class="splash-brillo"></div><div class="splash-marca"><span class="logo">riff</span><p class="cuerpo">todo en un mismo lugar.</p></div><div class="splash-ondas"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>';
+  pantalla.classList.add("splash-animado");
+  listo();
+  await new Promise((r) => setTimeout(r, 2700));
+  pantalla.classList.add("splash-salida");
+  await new Promise((r) => setTimeout(r, 420));
+  ir("selecciona-perfil.html");
 };
 pantallas["selecciona-perfil"] = async () => {
   const u = await usuario(); if (!u) return;
@@ -424,12 +429,14 @@ pantallas["gustos-manual"] = async () => {
 };
 async function vinculado(servicio) {
   await exigirSesion();
+  const real = servicio === "spotify" && (() => { try { return JSON.parse(sessionStorage.getItem("riff_spotify")); } catch { return null; } })();
+  if (real) pintarVinculado(pantalla, real, chipNuevo);
   const artistas = $$(".avatar + .p12", pantalla).map((s) => s.textContent.trim());
   const chips = $(".chips", pantalla);
   const p = await perfil();
   const nombre = $(".p12.suave", $(".tarjeta", pantalla));
   if (nombre && p) nombre.textContent = (p.nombre || p.correo) + " · cuenta vinculada";
-  await guardarPerfil({ cuenta_musica: servicio, artistas });
+  await guardarPerfil({ cuenta_musica: servicio, artistas: real ? real.todos : artistas });
   $(".pie .boton", pantalla).onclick = async (e) => {
     e.preventDefault();
     const sel = $$(".chip.sel", chips).map(textoChip);
@@ -440,7 +447,25 @@ async function vinculado(servicio) {
 }
 pantallas["vinculado-spotify"] = () => vinculado("spotify");
 pantallas["vinculado-apple-music"] = () => vinculado("apple music");
-pantallas["vincular-gustos"] = () => exigirSesion();
+pantallas["vincular-gustos"] = async () => {
+  await exigirSesion();
+  const boton = $("a.boton.spotify", pantalla);
+  if (boton && spotifyListo()) boton.onclick = (e) => { e.preventDefault(); iniciarSpotify(params.get("desde") || ""); };
+};
+pantallas["spotify-autorizacion"] = () => { if (spotifyListo()) iniciarSpotify(); };
+pantallas["spotify-importando"] = async () => {
+  listo();
+  if (params.get("error")) { aviso("No se vinculó Spotify. Puedes intentarlo de nuevo."); return setTimeout(() => ir("vincular-gustos.html"), 1800); }
+  if (!params.get("code")) return;
+  try {
+    const datos = await importarSpotify(params.get("code"));
+    sessionStorage.setItem("riff_spotify", JSON.stringify(datos));
+    const desde = sessionStorage.getItem("riff_spotify_desde");
+    ir("vinculado-spotify.html" + (desde ? "?desde=" + desde : ""));
+  } catch (e) {
+    aviso(e.message); setTimeout(() => ir("vincular-gustos.html"), 3500);
+  }
+};
 
 // ---------- presupuesto ----------
 const RANGOS = { "Gratis": [0, 0], "Hasta 50 mil": [0, 50000], "50 – 150 mil": [50000, 150000], "150 – 300 mil": [150000, 300000], "Sin límite": [0, null] };
@@ -1198,6 +1223,10 @@ pantallas["org-metricas"] = async () => {
 };
 
 // ---------- arranque ----------
+// La pantalla se muestra (con su animación) cuando ya tiene sus datos reales
+function listo() { if (!saliendo) document.documentElement.classList.add("riff-listo"); }
 const fn = pantalla && pantallas[pantalla.id];
-if (fn) fn().catch((e) => { if (!/sin sesión|no es organizador/.test(e.message)) { console.error(e); aviso("Algo falló. Recarga la página."); } });
+if (fn) fn().then(listo).catch((e) => { if (!/sin sesión|no es organizador/.test(e.message)) { console.error(e); aviso("Algo falló. Recarga la página."); listo(); } });
+else listo();
+setTimeout(listo, 3500);
 sb.auth.onAuthStateChange((evento) => { if (evento === "SIGNED_OUT") { _perfil = undefined; _guardados = undefined; } });

@@ -44,7 +44,7 @@ document.addEventListener("click", (evento) => {
 // Pantallas que avanzan solas (cargando, importando gustos).
 // El splash lo decide riff.js, porque depende de si hay sesión abierta.
 const automatica = document.querySelector("[data-auto]");
-if (automatica && !/splash/.test(automatica.id)) {
+if (automatica && !/splash/.test(automatica.id) && !/[?&](code|error)=/.test(location.search)) {
   const [destino, espera] = automatica.dataset.auto.split(",");
   setTimeout(() => (location.href = destino + location.search), Number(espera));
 }

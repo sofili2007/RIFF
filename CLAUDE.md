@@ -7,9 +7,12 @@ RIFF: centraliza y recomienda eventos de música en vivo en Bogotá, según los 
 - pantallas.md: el mapa de avance. Actualízalo al terminar cada pantalla.
 
 ## Tecnología (no cambiar sin preguntar)
-- HTML, CSS y JavaScript puro. Sin frameworks ni librerías (nada de React, Vue, Tailwind ni TypeScript) y sin paso de compilación: todo debe funcionar abriendo los archivos en el navegador.
+- HTML, CSS y JavaScript puro. Sin frameworks (nada de React, Vue, Tailwind ni TypeScript) y sin paso de compilación.
+- Excepciones aprobadas, cargadas desde CDN: supabase-js (base de datos) y Leaflet (mapa real con OpenStreetMap/CARTO).
 - La app se publica en Vercel, conectada a este repositorio.
-- Más adelante, la base de datos será Supabase. Por ahora, los datos son simulados.
+- Base de datos: Supabase. Esquema, seguridad (RLS) y automatizaciones en supabase/esquema.sql. La conexión está en js/config.js (solo la llave pública "publishable"; las reglas RLS protegen los datos).
+- js/app.js carga la navegación básica y js/riff.js, que conecta cada pantalla (buscada por el id de su <section class="pantalla">) con Supabase.
+- pages/evento.html es el detalle único de cualquier evento (evento.html?id=N). Las páginas detalle-*.html y salida-*.html redirigen ahí.
 
 ## Estructura del proyecto
 - disenos/: diseños originales. Solo de referencia: nunca los modifiques.
@@ -24,7 +27,7 @@ RIFF: centraliza y recomienda eventos de música en vivo en Bogotá, según los 
 1. Antes de crear o modificar archivos, explica tu plan en pocas líneas y espera aprobación.
 2. Trabaja una pantalla o una función a la vez.
 3. Usa solo los tokens y componentes del design kit. Si necesitas un estilo o componente que no existe, pregunta: primero se agrega al kit y a componentes.html, y después se usa.
-4. Nunca escribas claves, contraseñas ni tokens de acceso en el código: este repositorio es público.
+4. Nunca escribas claves secretas, contraseñas ni tokens de acceso en el código: este repositorio es público. La única excepción es la llave pública (publishable) de Supabase en js/config.js.
 5. Si algo que te pedimos contradice spec.md, avísanos antes de hacerlo.
 6. Al terminar cada tarea, explica en lenguaje simple qué cambiaste y por qué. Somos un equipo aprendiendo.
 7. Antes de cada comando de git, explica en una frase qué hace.

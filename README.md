@@ -18,6 +18,17 @@ RIFF es una app que centraliza y recomienda eventos musicales en vivo en una ciu
 - Repositorio: [github.com/ngodoyb/RIFF](https://github.com/ngodoyb/RIFF)
 - Prototipo navegable (HTML): abre [`disenos/prototipo.html`](disenos/prototipo.html) con doble clic en tu computador
 
+## Qué funciona de verdad
+
+- Cuentas reales (crear cuenta e iniciar sesión con correo y contraseña) para público y organizadores.
+- Gustos musicales y presupuesto guardados en la base de datos; Spotify y Apple Music simulados (guardan artistas y géneros de ejemplo).
+- Feed, búsqueda, filtros y resultados con eventos reales de la base de datos.
+- Detalle de cada evento, guardar con recordatorio, compartir, «dentro / fuera de tu presupuesto» y salida a la página oficial.
+- Calendario mensual con tus guardados, mis guardados y notificaciones.
+- Mapa real de Bogotá (Leaflet) con tu ubicación, pines de eventos y «Cómo llegar».
+- Organizadores: verificación con documentos, perfil público, publicar evento en 4 pasos (con portada y dirección en el mapa), revisión, panel y métricas reales (vistas, guardados, clics a venta).
+- Base de datos: Supabase (`supabase/esquema.sql`).
+
 ## Documentos
 
 | Documento | Descripción |

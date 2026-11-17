@@ -790,9 +790,15 @@ async function pantallaMapa() {
   const mapa = mapaBase(L, div, miUbicacion() || BOGOTA, 12);
   const marcadores = {};
   const colores = ["", "indie", "cumbia"];
-  evs.filter((e) => e.lat != null).forEach((e, i) => {
-    const icono = L.divIcon({ className: "pin-riff", html: `<span class="pin ${colores[i % 3]}" style="background-image:url('${imagen(e.portada)}')"></span>`, iconSize: [46, 46], iconAnchor: [23, 55] });
-    marcadores[e.id] = L.marker([e.lat, e.lng], { icon: icono }).addTo(mapa).on("click", () => abrir(e));
+  // Un pin por venue (varios eventos en el mismo lugar se agrupan con un contador)
+  const porLugar = {};
+  evs.filter((e) => e.lat != null && e.lng != null).forEach((e) => { const k = (+e.lat).toFixed(4) + "," + (+e.lng).toFixed(4); (porLugar[k] ||= []).push(e); });
+  Object.values(porLugar).forEach((grupo, i) => {
+    const e = grupo[0];
+    const cuenta = grupo.length > 1 ? `<b class="cuenta">${grupo.length > 99 ? "99+" : grupo.length}</b>` : "";
+    const icono = L.divIcon({ className: "pin-riff", html: `<span class="pin ${colores[i % 3]}" style="background-image:url('${imagen(e.portada)}')"></span>${cuenta}`, iconSize: [46, 46], iconAnchor: [23, 55] });
+    const m = L.marker([+e.lat, +e.lng], { icon: icono, title: e.venue || "" }).addTo(mapa).on("click", () => (grupo.length > 1 ? abrirLugar(grupo) : abrir(e)));
+    grupo.forEach((x) => (marcadores[x.id] = m));
   });
   let yo;
   const ponerYo = (u) => { if (!u) return; if (yo) yo.remove(); yo = L.marker([u.lat, u.lng], { icon: L.divIcon({ className: "yo-riff", html: '<span class="yo"></span>', iconSize: [0, 0] }), interactive: false }).addTo(mapa); };
@@ -810,6 +816,17 @@ async function pantallaMapa() {
     hoja.innerHTML = `<div class="asa"></div><div class="fila entre"><p class="p12 suave">${esc(fKm(e) || "Bogotá")}</p><button class="enlace p14b" data-cerrar>Ver todos</button></div>
       <div class="mt8">${filaEvento(e, ids.has(e.id))}</div>
       <div class="fila g8 mt12"><a class="boton secundario" href="${ruta}" target="_blank" rel="noopener" style="height:44px">Cómo llegar</a><a class="boton primario" href="evento.html?id=${e.id}" style="height:44px">Ver evento</a></div>`;
+    $("[data-cerrar]", hoja).onclick = lista;
+  };
+  const abrirLugar = (grupo) => {
+    const e = grupo[0];
+    mapa.setView([e.lat, e.lng], Math.max(mapa.getZoom(), 14));
+    hoja.onclick = null; hoja.classList.add("abierta");
+    const ruta = `https://www.google.com/maps/dir/?api=1&destination=${e.lat},${e.lng}`;
+    const ordenados = [...grupo].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+    hoja.innerHTML = `<div class="asa"></div><div class="fila entre"><div><h2 class="h3">${esc(e.venue || "Este lugar")}</h2><p class="p12 suave">${grupo.length} eventos${fKm(e) ? " · " + esc(fKm(e)) : ""}</p></div><button class="enlace p14b" data-cerrar>Ver todos</button></div>
+      <a class="boton secundario mt12" href="${ruta}" target="_blank" rel="noopener" style="height:44px">Cómo llegar</a>
+      <div class="lista lista-mapa">${ordenados.map((x) => filaEvento(x, ids.has(x.id))).join("")}</div>`;
     $("[data-cerrar]", hoja).onclick = lista;
   };
   lista();

@@ -49,4 +49,22 @@ if (automatica && !/splash/.test(automatica.id)) {
   setTimeout(() => (location.href = destino + location.search), Number(espera));
 }
 
-import(raiz + "js/riff.js").catch((error) => console.error("RIFF no pudo cargar", error));
+// En celular: el diseño (375 px de ancho) se escala para llenar toda la pantalla
+function ajustarPantalla() {
+  const telefono = document.querySelector(".telefono");
+  if (!telefono) return;
+  if (window.innerWidth <= 720) {
+    const escala = window.innerWidth / 375;
+    telefono.style.width = "375px";
+    telefono.style.height = window.innerHeight / escala + "px";
+    telefono.style.transform = "scale(" + escala + ")";
+    telefono.style.transformOrigin = "top left";
+  } else {
+    telefono.style.width = telefono.style.height = telefono.style.transform = "";
+  }
+}
+ajustarPantalla();
+window.addEventListener("resize", ajustarPantalla);
+window.addEventListener("orientationchange", () => setTimeout(ajustarPantalla, 300));
+
+import(new URL(raiz + "js/riff.js", location.href).href).catch((error) => console.error("RIFF no pudo cargar", error));

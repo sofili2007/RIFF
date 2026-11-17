@@ -449,9 +449,13 @@ pantallas["vinculado-spotify"] = () => vinculado("spotify");
 pantallas["vinculado-apple-music"] = () => vinculado("apple music");
 pantallas["vincular-gustos"] = async () => {
   await exigirSesion();
+  $("a.boton.apple", pantalla)?.remove(); $(".app-apple", pantalla)?.remove();
+  const intro = $("p.cuerpo", pantalla);
+  if (intro) intro.textContent = "Conecta Spotify y te recomendamos conciertos de los artistas y géneros que más escuchas.";
   const boton = $("a.boton.spotify", pantalla);
   if (boton && spotifyListo()) boton.onclick = (e) => { e.preventDefault(); iniciarSpotify(params.get("desde") || ""); };
 };
+["apple-music-permiso", "apple-music-importando", "vinculado-apple-music"].forEach((id) => (pantallas[id] = () => ir("vincular-gustos.html")));
 pantallas["spotify-autorizacion"] = () => { if (spotifyListo()) iniciarSpotify(); };
 pantallas["spotify-importando"] = async () => {
   listo();

@@ -11,6 +11,11 @@ const estilos = document.createElement("link");
 estilos.rel = "stylesheet";
 estilos.href = raiz + "css/app.css";
 document.head.appendChild(estilos);
+// Capa visual «Glass Liquid» (se suma encima; si se borra, la app vuelve al estilo anterior)
+const vidrio = document.createElement("link");
+vidrio.rel = "stylesheet";
+vidrio.href = raiz + "css/glass.css";
+document.head.appendChild(vidrio);
 
 document.addEventListener("click", (evento) => {
   const el = evento.target.closest("[data-href], [data-volver], [data-url], [data-alternar]");

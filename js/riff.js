@@ -7,6 +7,7 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 import { SUPABASE_URL, SUPABASE_KEY } from "./config.js";
 import { spotifyListo, iniciarSpotify, importarSpotify, pintarVinculado } from "./spotify.js";
+import { ICONOS_MIN, aplicarIconos } from "./iconos.js";
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 const enPages = location.pathname.includes("/pages/");
@@ -33,8 +34,10 @@ const ICONOS = {
   music: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
   upload: '<path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>',
 };
+Object.assign(ICONOS, ICONOS_MIN); // versión minimalista (trazo fino)
+aplicarIconos();
 const ic = (nombre, clase = "s18", relleno = false) =>
-  `<svg class="ic ${clase}${relleno ? " relleno" : ""}" viewBox="0 0 24 24" fill="${relleno ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONOS[nombre]}</svg>`;
+  `<svg class="ic ${clase}${relleno ? " relleno" : ""}" viewBox="0 0 24 24" fill="${relleno ? "currentColor" : "none"}" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${ICONOS[nombre]}</svg>`;
 
 // ---------- formatos ----------
 const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -376,8 +379,31 @@ pantallas["org-crear-cuenta"] = () => formularioCuenta({ organizador: true });
 pantallas["crear-cuenta-valido"] = () => ir("crear-cuenta.html");
 pantallas["org-crear-cuenta-valido"] = () => ir("org-crear-cuenta.html");
 
+// A dónde va cada persona al entrar
+async function entrarSegunRol(organizador) {
+  _perfil = undefined;
+  const p = await perfil();
+  if (p?.rol === "organizador") return ir("org-panel.html");
+  if (organizador) aviso("Esta cuenta es de público, te llevamos a tu feed");
+  ir(p?.generos?.length ? "feed.html" : "vincular-gustos.html");
+}
+const LARGO_CODIGO = 8; // Supabase → Authentication → Sign In / Providers → Email → «Email OTP length»
+const errorCorreo = (error) =>
+  /signups not allowed|not found|no user/i.test(error.message) ? "No encontramos una cuenta con ese correo. Revisa que esté bien escrito o crea una cuenta."
+  : /rate|seconds|too many|security purposes/i.test(error.message) ? "Ya te enviamos un correo hace poco. Espera un minuto y vuelve a intentarlo."
+  : "No pudimos enviar el correo. Intenta de nuevo en un momento.";
+
 async function formularioIngreso({ organizador }) {
   const contenido = $(".contenido", pantalla);
+  const destino = location.origin + "/pages/" + (organizador ? "org-" : "") + "iniciar-sesion.html";
+  // Llegó desde el enlace del correo
+  const hash = new URLSearchParams(location.hash.slice(1));
+  if (hash.get("error_code")) aviso(/expired/.test(hash.get("error_code")) ? "El enlace del correo venció. Pide uno nuevo." : "Ese enlace ya no sirve. Pide uno nuevo.");
+  if (params.has("enlace") || params.has("nueva-clave")) {
+    const { data } = await sb.auth.getSession();
+    if (data.session && params.has("nueva-clave")) return flujoCorreo({ modo: "clave", organizador, destino, paso: 3 });
+    if (data.session) return entrarSegunRol(organizador);
+  }
   const aviso1 = $(".tarjeta.borde-rosa", contenido);
   if (aviso1 && !params.has("nuevo")) aviso1.remove();
   const sub = $("p.cuerpo", contenido);
@@ -388,22 +414,155 @@ async function formularioIngreso({ organizador }) {
   $(".ayuda", campo)?.remove(); correo.ayudaOriginal = "";
   const boton = botonReal($(".boton", contenido));
   const clave = campoReal(nuevoCampo(boton, "Contraseña"), { tipo: "password", nombre: "clave", placeholder: "Tu contraseña", autocomplete: "current-password" });
+  // ¿Olvidaste tu contraseña? (debajo del campo, a la derecha, donde se espera)
+  const olvido = document.createElement("button");
+  olvido.type = "button"; olvido.className = "enlace olvido"; olvido.textContent = "¿Olvidaste tu contraseña?";
+  clave.campo.appendChild(olvido);
+  // Otra forma de entrar: código al correo
+  const otra = document.createElement("div");
+  otra.className = "pila g12 otra-forma";
+  otra.innerHTML = `<div class="fila g12"><span class="separador flex1"></span><span class="p12 suave">o</span><span class="separador flex1"></span></div>
+    <button type="button" class="boton secundario" data-codigo>${ic("mail", "s18")}Entrar con un código al correo</button>`;
+  boton.after(otra);
   const validar = () => { const ok = correoValido(correo.value) && clave.value.length >= 6; habilitar(boton, ok); return ok; };
   [correo, clave].forEach((i) => i.addEventListener("input", () => { errorCampo(i, ""); validar(); }));
   clave.addEventListener("keydown", (e) => e.key === "Enter" && boton.click());
   validar();
+  olvido.onclick = () => flujoCorreo({ modo: "clave", correoInicial: correo.value, organizador, destino });
+  $("[data-codigo]", otra).onclick = () => flujoCorreo({ modo: "codigo", correoInicial: correo.value, organizador, destino });
   boton.onclick = async () => {
     if (!validar()) return;
     boton.classList.add("cargando");
     const { error } = await sb.auth.signInWithPassword({ email: correo.value.trim(), password: clave.value });
     boton.classList.remove("cargando");
-    if (error) return errorCampo(clave, "Correo o contraseña incorrectos");
-    _perfil = undefined;
-    const p = await perfil();
-    if (p?.rol === "organizador") return ir("org-panel.html");
-    if (organizador) aviso("Esta cuenta es de público, te llevamos a tu feed");
-    ir(p?.generos?.length ? "feed.html" : "vincular-gustos.html");
+    if (error) return errorCampo(clave, "Correo o contraseña incorrectos. ¿La olvidaste? Toca «¿Olvidaste tu contraseña?».");
+    entrarSegunRol(organizador);
   };
+}
+
+// Entrar con código o recuperar la contraseña, en la misma pantalla:
+// 1) correo → 2) código que llega al correo (o el botón del correo) → 3) contraseña nueva (solo al recuperar)
+function flujoCorreo({ modo, correoInicial = "", organizador, destino, paso: pasoInicial = 1 }) {
+  const contenido = $(".contenido", pantalla);
+  const original = [...contenido.childNodes];
+  const atras = $(".nav [data-volver]", pantalla);
+  const recuperar = modo === "clave";
+  let paso = pasoInicial, correo = correoInicial.trim(), reloj;
+  const salir = () => {
+    clearInterval(reloj);
+    contenido.replaceChildren(...original);
+    if (atras) { atras.removeAttribute("data-riff"); atras.onclick = null; }
+  };
+  if (atras) {
+    atras.setAttribute("data-riff", "");
+    atras.onclick = (e) => { e.preventDefault(); if (paso === 2) pintar(1); else if (paso === 3 && pasoInicial === 3) ir((organizador ? "org-" : "") + "iniciar-sesion.html"); else salir(); };
+  }
+  const cabecera = (icono, titulo, texto) => `<div><span class="icono-correo">${ic(icono, "s28")}</span>
+    <h1 class="h1 mt16">${titulo}</h1><p class="cuerpo suave mt8">${texto}</p></div>`;
+
+  async function enviar(boton) {
+    boton?.classList.add("cargando");
+    const { error } = recuperar
+      ? await sb.auth.resetPasswordForEmail(correo, { redirectTo: destino + "?nueva-clave=1" })
+      : await sb.auth.signInWithOtp({ email: correo, options: { shouldCreateUser: false, emailRedirectTo: destino + "?enlace=1" } });
+    boton?.classList.remove("cargando");
+    return error;
+  }
+
+  function pintar(n) {
+    paso = n; clearInterval(reloj);
+    if (n === 1) {
+      contenido.innerHTML = `<div class="pila g16 entrada-flujo" style="padding-top:8px">
+        ${cabecera(recuperar ? "key" : "mail", recuperar ? "recupera tu cuenta" : "entra con un código", recuperar ? "Escribe el correo de tu cuenta y te enviaremos un código para crear una contraseña nueva." : "Te enviaremos un código a tu correo para que entres sin contraseña.")}
+        <div class="campo mt8"><label>Correo</label><div class="caja"></div></div>
+        <button type="button" class="boton deshabilitado mt8" data-enviar>Enviar código</button></div>`;
+      const input = campoReal($(".campo", contenido), { tipo: "email", nombre: "correo", placeholder: "tu@correo.com", valor: correo, autocomplete: "email" });
+      const b = $("[data-enviar]", contenido);
+      const validar = () => { habilitar(b, correoValido(input.value)); };
+      input.addEventListener("input", () => { errorCampo(input, ""); validar(); });
+      input.addEventListener("keydown", (e) => e.key === "Enter" && b.click());
+      validar(); setTimeout(() => input.focus(), 50);
+      b.onclick = async () => {
+        if (!correoValido(input.value)) return;
+        correo = input.value.trim();
+        const error = await enviar(b);
+        if (error) return errorCampo(input, errorCorreo(error));
+        pintar(2);
+      };
+    }
+    if (n === 2) {
+      contenido.innerHTML = `<div class="pila g16 entrada-flujo" style="padding-top:8px">
+        ${cabecera("mail", "revisa tu correo", `Escribe el código de ${LARGO_CODIGO} dígitos que enviamos a <b style="color:#fff">${esc(correo)}</b>. Si el correo trae un botón, también puedes tocarlo.`)}
+        <div class="codigo mt8" role="group" aria-label="Código de ${LARGO_CODIGO} dígitos">${Array.from({ length: LARGO_CODIGO }, (_, i) => `<input inputmode="numeric" autocomplete="${i ? "off" : "one-time-code"}" maxlength="1" aria-label="Dígito ${i + 1}">`).join("")}</div>
+        <p class="ayuda" data-ayuda>Revisa también la carpeta de spam. El código vence en 1 hora.</p>
+        <button type="button" class="boton deshabilitado" data-verificar>${recuperar ? "Continuar" : "Entrar"}</button>
+        <div class="fila entre"><button type="button" class="enlace p14b" data-otro>Usar otro correo</button><button type="button" class="enlace p14b reenviar" data-reenviar></button></div></div>`;
+      const cajas = $$(".codigo input", contenido);
+      const grupo = $(".codigo", contenido), ayuda = $("[data-ayuda]", contenido);
+      const b = $("[data-verificar]", contenido), reenviar = $("[data-reenviar]", contenido);
+      const codigo = () => cajas.map((c) => c.value).join("");
+      const revisar = () => { cajas.forEach((c) => c.classList.toggle("lleno", !!c.value)); habilitar(b, codigo().length === LARGO_CODIGO); };
+      const repartir = (desde, texto) => { const d = texto.replace(/\D/g, "").split(""); d.forEach((x, k) => cajas[desde + k] && (cajas[desde + k].value = x)); (cajas[Math.min(desde + d.length, LARGO_CODIGO - 1)]).focus(); };
+      cajas.forEach((c, i) => {
+        c.addEventListener("input", () => {
+          grupo.classList.remove("error"); ayuda.classList.remove("error-texto");
+          if (c.value.length > 1) repartir(i, c.value); else { c.value = c.value.replace(/\D/g, ""); if (c.value && cajas[i + 1]) cajas[i + 1].focus(); }
+          revisar(); if (codigo().length === LARGO_CODIGO) b.click();
+        });
+        c.addEventListener("keydown", (e) => { if (e.key === "Backspace" && !c.value && cajas[i - 1]) { cajas[i - 1].focus(); cajas[i - 1].value = ""; revisar(); } });
+        c.addEventListener("paste", (e) => { e.preventDefault(); repartir(i, e.clipboardData.getData("text")); revisar(); if (codigo().length === LARGO_CODIGO) b.click(); });
+      });
+      setTimeout(() => cajas[0].focus(), 50);
+      let espera = 60;
+      const contar = () => { reenviar.disabled = espera > 0; reenviar.textContent = espera > 0 ? `Reenviar en ${espera} s` : "Reenviar código"; };
+      contar(); reloj = setInterval(() => { espera--; contar(); if (espera <= 0) clearInterval(reloj); }, 1000);
+      reenviar.onclick = async () => {
+        if (espera > 0) return;
+        const error = await enviar();
+        if (error) { ayuda.textContent = errorCorreo(error); ayuda.classList.add("error-texto"); return; }
+        aviso("Te enviamos un código nuevo"); espera = 60; contar(); reloj = setInterval(() => { espera--; contar(); if (espera <= 0) clearInterval(reloj); }, 1000);
+      };
+      $("[data-otro]", contenido).onclick = () => pintar(1);
+      b.onclick = async () => {
+        if (codigo().length !== LARGO_CODIGO || b.classList.contains("cargando")) return;
+        b.classList.add("cargando");
+        const { error } = await sb.auth.verifyOtp({ email: correo, token: codigo(), type: recuperar ? "recovery" : "email" });
+        b.classList.remove("cargando");
+        if (error) {
+          grupo.classList.add("error"); ayuda.classList.add("error-texto");
+          ayuda.textContent = /expired/i.test(error.message) ? "El código venció. Toca «Reenviar código»." : "El código no es correcto. Revísalo e intenta de nuevo.";
+          return;
+        }
+        if (recuperar) pintar(3); else entrarSegunRol(organizador);
+      };
+    }
+    if (n === 3) {
+      contenido.innerHTML = `<div class="pila g16 entrada-flujo" style="padding-top:8px">
+        ${cabecera("lock", "crea tu nueva contraseña", "Usa al menos 6 caracteres. Después entrarás directo a tu cuenta.")}
+        <div class="campo mt8" data-c1><label>Contraseña nueva</label><div class="caja"></div></div>
+        <div class="campo" data-c2><label>Repite la contraseña</label><div class="caja"></div></div>
+        <button type="button" class="boton deshabilitado mt8" data-guardar>Guardar y entrar</button></div>`;
+      const c1 = campoReal($("[data-c1]", contenido), { tipo: "password", nombre: "nueva", placeholder: "Mínimo 6 caracteres", autocomplete: "new-password" });
+      const c2 = campoReal($("[data-c2]", contenido), { tipo: "password", nombre: "repetir", placeholder: "Escríbela otra vez", autocomplete: "new-password" });
+      const b = $("[data-guardar]", contenido);
+      const validar = () => { const ok = c1.value.length >= 6 && c2.value === c1.value; habilitar(b, ok); return ok; };
+      [c1, c2].forEach((i) => i.addEventListener("input", () => { errorCampo(i, ""); validar(); }));
+      c2.addEventListener("blur", () => c2.value && c2.value !== c1.value && errorCampo(c2, "Las contraseñas no coinciden"));
+      setTimeout(() => c1.focus(), 50);
+      b.onclick = async () => {
+        if (!validar()) return;
+        b.classList.add("cargando");
+        const { error } = await sb.auth.updateUser({ password: c1.value });
+        b.classList.remove("cargando");
+        if (error) return errorCampo(c1, /same|different/i.test(error.message) ? "Usa una contraseña distinta a la anterior." : /session|jwt|expired/i.test(error.message) ? "El enlace o código venció. Vuelve a pedir uno." : "No pudimos guardarla. Intenta de nuevo.");
+        aviso("Listo, tu contraseña quedó actualizada");
+        setTimeout(() => entrarSegunRol(organizador), 900);
+      };
+    }
+    contenido.scrollTop = 0;
+  }
+  pintar(paso);
+  listo();
 }
 pantallas["iniciar-sesion"] = () => formularioIngreso({ organizador: false });
 pantallas["org-iniciar-sesion"] = () => formularioIngreso({ organizador: true });

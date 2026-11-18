@@ -457,8 +457,8 @@ function flujoCorreo({ modo, correoInicial = "", organizador, destino, paso: pas
     atras.setAttribute("data-riff", "");
     atras.onclick = (e) => { e.preventDefault(); if (paso === 2) pintar(1); else if (paso === 3 && pasoInicial === 3) ir((organizador ? "org-" : "") + "iniciar-sesion.html"); else salir(); };
   }
-  const cabecera = (icono, titulo, texto) => `<span class="icono-correo">${ic(icono, "s28")}</span>
-    <h1 class="h1 mt24">${titulo}</h1><p class="cuerpo suave mt12">${texto}</p>`;
+  const cabecera = (icono, titulo, texto) => `<div><span class="icono-correo">${ic(icono, "s28")}</span>
+    <h1 class="h1 mt16">${titulo}</h1><p class="cuerpo suave mt8">${texto}</p></div>`;
 
   async function enviar(boton) {
     boton?.classList.add("cargando");

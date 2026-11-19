@@ -1380,7 +1380,8 @@ async function nominatim(q, caja = "-74.25,4.85,-73.98,4.45", extra = "") {
   const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=co&viewbox=${caja}&bounded=1&q=${encodeURIComponent(q + ", Bogotá")}${extra}`);
   return r.ok ? r.json() : [];
 }
-const lineasVia = (rs) => rs.filter((r) => r.class === "highway").flatMap((r) => { const g = r.geojson || {}; return g.type === "LineString" ? [g.coordinates] : g.type === "MultiLineString" ? g.coordinates : []; });
+const normalVia = (t) => (t || "").toLowerCase().normalize("NFD").replace(/\p{M}/gu, "").replace(/^avenida\s+/, "").replace(/\s+/g, " ").trim();
+const lineasVia = (rs, via) => rs.filter((r) => r.class === "highway" && (!via || normalVia(r.name) === normalVia(via))).flatMap((r) => { const g = r.geojson || {}; return g.type === "LineString" ? [g.coordinates] : g.type === "MultiLineString" ? g.coordinates : []; });
 function cruceDeVias(A, B) {
   const KX = 111320 * 0.9967, KY = 110574, xy = ([lo, la]) => [lo * KX, la * KY];
   const cerca = (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1))); const q = [a[0] + t * dx, a[1] + t * dy]; return [Math.hypot(p[0] - q[0], p[1] - q[1]), q]; };
@@ -1393,23 +1394,34 @@ function cruceDeVias(A, B) {
       for (const [p, s1, s2] of [[a1, b1, b2], [a2, b1, b2], [b1, a1, a2], [b2, a1, a2]]) { const [dd, q] = cerca(p, s1, s2); if (!mejor || dd < mejor.d) mejor = { d: dd, lat: (p[1] + q[1]) / 2 / KY, lng: (p[0] + q[0]) / 2 / KX }; } } }
   return mejor;
 }
+// Las vías grandes figuran en el mapa como «Avenida Carrera 7», las pequeñas como «Carrera 7»: se buscan ambas
+async function trazosVia(via, caja) {
+  const conAv = /^avenida/i.test(via) ? [via] : [via, "Avenida " + via];
+  let lineas = [];
+  for (const [i, q] of conAv.entries()) {
+    if (i) await esperar(1100); // Nominatim pide máximo una consulta por segundo
+    lineas = lineas.concat(lineasVia(await nominatim(q, caja, "&limit=40&polygon_geojson=1"), via));
+  }
+  return lineas;
+}
 async function ubicarDireccion(dir, venue = "") {
   const partes = partirDireccion(dir);
   if (partes) {
-    const A = lineasVia(await nominatim(partes.principal, undefined, "&limit=40&polygon_geojson=1"));
+    const A = await trazosVia(partes.principal);
     if (A.length) {
       const todos = A.flat(), m = 0.004;
       const caja = [Math.min(...todos.map((c) => c[0])) - m, Math.max(...todos.map((c) => c[1])) + m, Math.max(...todos.map((c) => c[0])) + m, Math.min(...todos.map((c) => c[1])) - m].join(",");
-      await esperar(1100); // Nominatim pide máximo una consulta por segundo
-      const B = lineasVia(await nominatim(partes.cruce, caja, "&limit=40&polygon_geojson=1"));
+      await esperar(1100);
+      const B = await trazosVia(partes.cruce, caja);
       const c = B.length && cruceDeVias(A, B);
       if (c && c.d < 350) return { lat: c.lat, lng: c.lng, exacto: true };
     }
     await esperar(1100);
   }
+  // Respaldo: la dirección completa o el nombre del lugar, pero nunca «Bogotá» en general
   for (const q of [dir, venue].filter((x) => x && x.length > 3)) {
-    const r = await nominatim(q, undefined, "&limit=1");
-    if (r[0]) return { lat: +r[0].lat, lng: +r[0].lon, exacto: false };
+    const r = (await nominatim(q, undefined, "&limit=5")).find((x) => +x.place_rank >= 26 && !["boundary", "place"].includes(x.class));
+    if (r) return { lat: +r.lat, lng: +r.lon, exacto: false };
     await esperar(1100);
   }
   return null;

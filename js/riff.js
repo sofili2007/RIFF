@@ -1444,19 +1444,16 @@ function hojaCompartir(ev) {
     if (op === "whatsapp") window.open("https://wa.me/?text=" + encodeURIComponent(mensaje), "_blank", "noopener");
     else if (op === "mensajes") location.href = "sms:?&body=" + encodeURIComponent(mensaje);
     else if (op === "instagram") {
-      // Instagram no deja pegar un enlace en un chat desde una página web: se copia el enlace
-      // y se abre la app directo en los mensajes (instagram://direct-inbox); ahí se pega en el chat
-      let ok = copiarYa();
-      if (!ok) { try { await navigator.clipboard.writeText(url); ok = true; } catch {} }
-      aviso(ok ? "Enlace copiado · abriendo tus mensajes de Instagram" : url);
-      const web = "https://www.instagram.com/direct/inbox/", ua = navigator.userAgent;
-      const android = /android/i.test(ua), ios = /iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
-      setTimeout(() => {
-        if (android) location.href = "intent://direct-inbox#Intent;scheme=instagram;package=com.instagram.android;S.browser_fallback_url=" + encodeURIComponent(web) + ";end";
-        else if (ios) location.href = "instagram://direct-inbox";
-        else window.open(web, "_blank", "noopener");
-      }, 700);
-      return setTimeout(cerrar, 900);
+      // Una página web no puede abrir el selector de contactos de Instagram directamente.
+      // El menú de compartir del celular sí: al elegir Instagram (Chats / Direct) se escoge el contacto y se envía, con el enlace ya puesto.
+      if (navigator.share) {
+        try { await navigator.share({ title: ev.titulo, text: mensaje }); } catch {}
+        return cerrar();
+      }
+      // Computador: no hay menú de compartir, se copia el enlace y se abren los mensajes de Instagram
+      const ok = await copiar();
+      aviso(ok ? "Enlace copiado. Pégalo en un chat de Instagram." : url);
+      window.open("https://www.instagram.com/direct/inbox/", "_blank", "noopener");
     } else { const ok = await copiar(); aviso(ok ? "Enlace copiado" : url); }
     cerrar();
   };

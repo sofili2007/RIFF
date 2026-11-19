@@ -296,7 +296,7 @@ html:not(.riff-listo) .telefono > .pantalla.con-tabs > :not(.tabs) { opacity: 0;
 .compartir-asa { display: block; width: 38px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.28); margin: 0 auto 12px; }
 .compartir-mini { width: 48px; height: 48px; border-radius: 12px; background: center/cover no-repeat rgba(255, 255, 255, 0.08); flex-shrink: 0; border: 1px solid rgba(255, 255, 255, 0.14); }
 .compartir-linea { height: 1px; margin: 16px -16px; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent); }
-.compartir-opciones { display: flex; justify-content: space-between; }
+.compartir-opciones { display: flex; justify-content: space-around; }
 .compartir-op { width: 76px; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 0; border: 0; background: none; color: var(--texto); cursor: pointer; font: inherit; }
 .compartir-op .p12 { white-space: nowrap; }
 .compartir-boton {
@@ -312,5 +312,4 @@ html:not(.riff-listo) .telefono > .pantalla.con-tabs > :not(.tabs) { opacity: 0;
 .compartir-op:focus-visible { outline: none; }
 .op-mensajes { color: #7ee08f; }
 .op-whatsapp { color: #5fe39a; }
-.op-instagram { color: #f27fb8; }
 .op-copiar { color: var(--primario); }

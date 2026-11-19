@@ -81,13 +81,20 @@ window.addEventListener("orientationchange", () => setTimeout(ajustarPantalla, 3
   const gota = document.createElement("span");
   gota.className = "tab-liquido";
   gota.setAttribute("aria-hidden", "true");
+  gota.style.position = "absolute"; // aunque los estilos aún no hayan cargado, no ocupa espacio en la barra
   tabs.prepend(gota);
   tabs.classList.add("con-liquido");
   const caja = (b) => ({ x: b.offsetLeft + (b.offsetWidth - 64) / 2, w: 64 });
   const colocar = (b) => { if (!b) { gota.style.opacity = "0"; return; } const c = caja(b); gota.style.transform = `translateX(${c.x}px)`; gota.style.width = c.w + "px"; gota.style.opacity = "1"; };
   let activa = botones.find((b) => b.classList.contains("activa"));
   colocar(activa);
-  window.addEventListener("resize", () => colocar(activa));
+  // Se vuelve a ubicar cuando cargan los estilos y las fuentes (cambian el ancho de cada pestaña)
+  const recolocar = () => requestAnimationFrame(() => colocar(activa));
+  window.addEventListener("resize", recolocar);
+  window.addEventListener("load", recolocar);
+  vidrio.addEventListener("load", recolocar);
+  document.fonts?.ready.then(recolocar);
+  if (window.ResizeObserver) new ResizeObserver(recolocar).observe(tabs);
   const quieto = matchMedia("(prefers-reduced-motion: reduce)").matches;
   tabs.addEventListener("click", (e) => {
     const b = e.target.closest("a[href]");

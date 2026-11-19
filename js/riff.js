@@ -1394,11 +1394,10 @@ pantallas["org-panel"] = async () => {
 };
 pantallas["org-panel-cancelar"] = () => ir("org-panel.html");
 
-// ---------- compartir un evento (hoja de vidrio con WhatsApp, Instagram, Mensajes y copiar enlace) ----------
+// ---------- compartir un evento (hoja de vidrio con Mensajes, WhatsApp y copiar enlace) ----------
 const ICONOS_COMPARTIR = {
   mensajes: '<path d="M4 5.5h16a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H9l-4.5 3.5V17.5H4A1.5 1.5 0 0 1 2.5 16V7A1.5 1.5 0 0 1 4 5.5z"/><path d="M7.5 10.5h9M7.5 13.5h5.5"/>',
   whatsapp: '<path d="M3.5 20.5l1.3-4.2A8.5 8.5 0 1 1 8 19.4z"/><path d="M9 8.6c.2-.5.6-.6 1-.6l.9 2-.6.9c.5 1.1 1.4 2 2.6 2.6l.9-.6 2 .9c0 .4-.1.8-.6 1-1.1.6-2.4.3-4.1-1-1.4-1.1-2.4-2.4-2.6-3.6-.1-.6 0-1.2.5-1.6z"/>',
-  instagram: '<rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r=".6" fill="currentColor"/>',
   copiar: '<rect x="8.5" y="8.5" width="12" height="12" rx="2.5"/><path d="M15.5 8.5V6a2.5 2.5 0 0 0-2.5-2.5H6A2.5 2.5 0 0 0 3.5 6v7A2.5 2.5 0 0 0 6 15.5h2.5"/>',
 };
 const icCompartir = (n) => `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONOS_COMPARTIR[n]}</svg>`;
@@ -1419,7 +1418,7 @@ function hojaCompartir(ev) {
       </div>
       <div class="compartir-linea"></div>
       <div class="compartir-opciones">
-        ${[["mensajes", "Mensajes"], ["whatsapp", "WhatsApp"], ["instagram", "Instagram"], ["copiar", "Copiar enlace"]].map(([k, t]) =>
+        ${[["mensajes", "Mensajes"], ["whatsapp", "WhatsApp"], ["copiar", "Copiar enlace"]].map(([k, t]) =>
           `<button type="button" class="compartir-op" data-op="${k}"><span class="compartir-boton op-${k}">${icCompartir(k)}</span><span class="p12">${t}</span></button>`).join("")}
       </div>
     </div>`;
@@ -1443,18 +1442,7 @@ function hojaCompartir(ev) {
     const op = e.target.closest("[data-op]")?.dataset.op; if (!op) return;
     if (op === "whatsapp") window.open("https://wa.me/?text=" + encodeURIComponent(mensaje), "_blank", "noopener");
     else if (op === "mensajes") location.href = "sms:?&body=" + encodeURIComponent(mensaje);
-    else if (op === "instagram") {
-      // Una página web no puede abrir el selector de contactos de Instagram directamente.
-      // El menú de compartir del celular sí: al elegir Instagram (Chats / Direct) se escoge el contacto y se envía, con el enlace ya puesto.
-      if (navigator.share) {
-        try { await navigator.share({ title: ev.titulo, text: mensaje }); } catch {}
-        return cerrar();
-      }
-      // Computador: no hay menú de compartir, se copia el enlace y se abren los mensajes de Instagram
-      const ok = await copiar();
-      aviso(ok ? "Enlace copiado. Pégalo en un chat de Instagram." : url);
-      window.open("https://www.instagram.com/direct/inbox/", "_blank", "noopener");
-    } else { const ok = await copiar(); aviso(ok ? "Enlace copiado" : url); }
+    else { const ok = await copiar(); aviso(ok ? "Enlace copiado" : url); }
     cerrar();
   };
   // Deslizar hacia abajo para cerrar

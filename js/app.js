@@ -55,21 +55,42 @@ if (automatica && !/splash/.test(automatica.id) && !/[?&](code|error)=/.test(loc
 }
 
 // En celular: el diseño (375 px de ancho) se escala para llenar toda la pantalla
+// En el celular, el marco de 375 px se escala al ancho real de la pantalla.
+// Se mide el ancho visible (no innerWidth, que crece si algo se sale del borde mientras carga)
+// y se vuelve a medir cuando terminan de cargar estilos, fuentes e imágenes.
+document.documentElement.style.overflowX = "hidden";
+function anchoVisible() {
+  const vv = window.visualViewport;
+  return Math.min(...[document.documentElement.clientWidth, window.innerWidth, vv && vv.width * vv.scale, screen.width].filter((n) => n > 0));
+}
 function ajustarPantalla() {
   const telefono = document.querySelector(".telefono");
   if (!telefono) return;
-  if (window.innerWidth <= 720) {
-    const escala = window.innerWidth / 375;
+  const ancho = anchoVisible();
+  if (ancho <= 720) {
+    const escala = ancho / 375;
+    document.body.style.overflow = "hidden";
+    // Pegado al borde izquierdo: si el marco se centrara, la escala lo correría y cortaría un lado
+    if (telefono.parentElement) { telefono.parentElement.style.justifyContent = "flex-start"; telefono.parentElement.style.padding = "0"; }
+    telefono.style.margin = "0";
     telefono.style.width = "375px";
-    telefono.style.height = window.innerHeight / escala + "px";
+    telefono.style.height = (window.visualViewport ? window.visualViewport.height : window.innerHeight) / escala + "px";
     telefono.style.transform = "scale(" + escala + ")";
     telefono.style.transformOrigin = "top left";
   } else {
-    telefono.style.width = telefono.style.height = telefono.style.transform = "";
+    telefono.style.width = telefono.style.height = telefono.style.transform = telefono.style.margin = "";
+    document.body.style.overflow = "";
+    if (telefono.parentElement) telefono.parentElement.style.justifyContent = telefono.parentElement.style.padding = "";
   }
 }
 ajustarPantalla();
 window.addEventListener("resize", ajustarPantalla);
+window.addEventListener("load", ajustarPantalla);
+window.addEventListener("pageshow", ajustarPantalla);
+document.addEventListener("DOMContentLoaded", ajustarPantalla);
+if (window.visualViewport) window.visualViewport.addEventListener("resize", ajustarPantalla);
+if (document.fonts) document.fonts.ready.then(ajustarPantalla);
+vidrio.addEventListener("load", ajustarPantalla);
 window.addEventListener("orientationchange", () => setTimeout(ajustarPantalla, 300));
 
 // Barra de pestañas (Feed · Mapa · Calendario · Perfil): una gota de vidrio líquido

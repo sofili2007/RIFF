@@ -125,4 +125,23 @@ window.addEventListener("orientationchange", () => setTimeout(ajustarPantalla, 3
   }, { passive: true, once: true })));
 })();
 
+// Carga anticipada: al apuntar o empezar a tocar un enlace, la siguiente pantalla ya se va descargando
+(function precarga() {
+  if (HTMLScriptElement.supports?.("speculationrules")) {
+    const reglas = document.createElement("script");
+    reglas.type = "speculationrules";
+    reglas.textContent = JSON.stringify({ prefetch: [{ source: "document", where: { href_matches: "/*" }, eagerness: "moderate" }] });
+    document.head.appendChild(reglas);
+    return;
+  }
+  const hechas = new Set();
+  const precargar = (e) => {
+    const a = e.target.closest?.("a[href]"); if (!a || a.origin !== location.origin || hechas.has(a.href)) return;
+    hechas.add(a.href);
+    const l = document.createElement("link"); l.rel = "prefetch"; l.href = a.href; document.head.appendChild(l);
+  };
+  document.addEventListener("pointerover", precargar, { passive: true });
+  document.addEventListener("touchstart", precargar, { passive: true });
+})();
+
 import(new URL(raiz + "js/riff.js", location.href).href).catch((error) => console.error("RIFF no pudo cargar", error));

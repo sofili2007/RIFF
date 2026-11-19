@@ -52,7 +52,7 @@
   border: 1px solid var(--vidrio-borde); box-shadow: var(--vidrio-brillo), 0 16px 40px -12px rgba(0, 0, 0, 0.7);
 }
 .tabs :is(button, a) { padding-top: 9px; gap: 3px; font-size: 11px; justify-content: flex-start; z-index: 0; }
-.tabs :is(button, a).activa::before {
+.tabs:not(.con-liquido) :is(button, a).activa::before {
   top: 6px; width: 64px; height: 50px; border-radius: 20px; z-index: -1;
   background: var(--vidrio-luz), linear-gradient(160deg, rgba(225, 153, 209, 0.24), rgba(225, 153, 209, 0.08));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), inset 0 0 0 1px rgba(225, 153, 209, 0.35);
@@ -79,14 +79,20 @@
 .boton.peligro { background: transparent; border: 1px solid rgba(203, 110, 116, 0.45); color: var(--acento); box-shadow: none; }
 .boton.spotify { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 10px 26px -12px rgba(30, 215, 96, 0.6); }
 
-/* Botones redondos: «gotas» de vidrio como el teclado de la referencia */
+/* Botones redondos de vidrio: relleno translúcido parejo, borde fino y una sola línea de brillo arriba.
+   Nada detrás del ícono (antes un brillo blanco se veía como una silueta borrosa debajo). */
 .boton-circulo, .card-evento .guardar, .boton-filtro {
-  background: radial-gradient(70% 55% at 35% 25%, rgba(255, 255, 255, 0.26), transparent 70%), rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -6px 12px rgba(0, 0, 0, 0.12), 0 6px 16px -8px rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(14px) saturate(160%); -webkit-backdrop-filter: blur(14px) saturate(160%);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 6px 16px -10px rgba(0, 0, 0, 0.6);
+  backdrop-filter: none; -webkit-backdrop-filter: none;
 }
-.boton-circulo.oscuro, .card-evento .guardar { background-color: rgba(16, 3, 16, 0.35); }
+/* Sobre fotos: vidrio oscuro con desenfoque para que el ícono se lea sobre cualquier imagen */
+.boton-circulo.oscuro, .card-evento .guardar, .nav .boton-circulo {
+  background: rgba(16, 3, 16, 0.42);
+  backdrop-filter: blur(12px) saturate(140%); -webkit-backdrop-filter: blur(12px) saturate(140%);
+}
+.boton-circulo .ic, .card-evento .guardar .ic, .boton-filtro .ic { filter: none; }
 .boton-filtro { border-radius: 16px; color: var(--primario); }
 
 /* Campos */
@@ -106,10 +112,10 @@
 .badge.genero { background: rgba(118, 91, 163, 0.55); border: 1px solid rgba(255, 255, 255, 0.12); }
 
 /* Cajas de ícono: vidrio tintado en vez de bloques de color */
-.icono-caja { background: radial-gradient(70% 60% at 30% 20%, rgba(255, 255, 255, 0.18), transparent 70%), rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; }
-.icono-caja.rosa-f { background: radial-gradient(70% 60% at 30% 20%, rgba(255, 255, 255, 0.5), transparent 70%), var(--primario); }
-.icono-caja.lila { background: radial-gradient(70% 60% at 30% 20%, rgba(255, 255, 255, 0.3), transparent 70%), rgba(118, 91, 163, 0.75); }
-.icono-caja.coral-f { background: radial-gradient(70% 60% at 30% 20%, rgba(255, 255, 255, 0.4), transparent 70%), var(--acento); }
+.icono-caja { background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14); }
+.icono-caja.rosa-f { background: var(--primario); border-color: rgba(255, 255, 255, 0.25); }
+.icono-caja.lila { background: rgba(118, 91, 163, 0.75); }
+.icono-caja.coral-f { background: var(--acento); border-color: rgba(255, 255, 255, 0.2); }
 
 /* Calendario: «hoy» en rosa (el rojo parecía un error) */
 .cal .d.hoy { color: var(--primario); }
@@ -129,21 +135,65 @@
 
 /* ---------- Ingreso: «¿Olvidaste tu contraseña?» y código por correo ---------- */
 .olvido { align-self: flex-end; margin-top: 2px; font-size: 13px; }
-.otra-forma .separador { background: var(--vidrio-borde); }
-.codigo { display: flex; gap: 6px; justify-content: space-between; }
-.codigo input {
-  flex: 1; min-width: 0; max-width: 40px; aspect-ratio: 1; border-radius: 50%; text-align: center; color: #fff; caret-color: var(--primario);
-  font: 400 22px/1 var(--f-cifras); outline: 0;
-  background: radial-gradient(70% 55% at 35% 25%, rgba(255, 255, 255, 0.22), transparent 70%), rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -6px 12px rgba(0, 0, 0, 0.12);
-}
-.codigo input:focus { border-color: var(--rosa-borde); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 0 0 4px rgba(225, 153, 209, 0.16); }
-.codigo input.lleno { border-color: rgba(225, 153, 209, 0.45); }
-.codigo.error input { border-color: var(--acento); }
 .icono-correo { width: 64px; height: 64px; border-radius: 22px; display: grid; place-items: center; color: var(--primario);
-  background: radial-gradient(70% 60% at 30% 20%, rgba(255, 255, 255, 0.25), transparent 70%), rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.18); box-shadow: var(--vidrio-brillo), var(--vidrio-sombra); }
+  background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.16); box-shadow: var(--vidrio-brillo), var(--vidrio-sombra); }
 .reenviar[disabled] { color: var(--texto-tenue); cursor: default; }
 .entrada-flujo { animation: riff-flujo 0.35s ease both; }
 @keyframes riff-flujo { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ---------- Barra de pestañas: gota de vidrio líquido que se desliza ---------- */
+.tabs .tab-liquido {
+  position: absolute; left: 0; top: 6px; width: 64px; height: 52px; border-radius: 20px; pointer-events: none; z-index: -1;
+  background: var(--vidrio-luz), linear-gradient(160deg, rgba(225, 153, 209, 0.26), rgba(225, 153, 209, 0.08));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), inset 0 0 0 1px rgba(225, 153, 209, 0.38), 0 6px 18px -8px rgba(225, 153, 209, 0.5);
+  backdrop-filter: blur(6px) saturate(170%); -webkit-backdrop-filter: blur(6px) saturate(170%);
+  transition: opacity 0.2s ease;
+}
+.tabs.con-liquido { isolation: isolate; }
+.tabs :is(button, a) { transition: color 0.25s ease; }
+/* Cambiar de sección no hace parpadear la barra: queda fija y solo entra el contenido */
+html:not(.riff-listo) .telefono > .pantalla.con-tabs { opacity: 1; animation: none; }
+html:not(.riff-listo) .telefono > .pantalla.con-tabs > :not(.tabs) { opacity: 0; }
+.riff-listo .telefono > .pantalla.con-tabs { animation: none; }
+.riff-listo .telefono > .pantalla.con-tabs > :not(.tabs):not(.velo):not(.alerta):not(.aviso-flotante):not(.hoja) { animation: riff-entrar 0.3s ease both; }
+@view-transition { navigation: auto; }
+.tabs { view-transition-name: riff-tabs; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.22s; }
+@media (prefers-reduced-motion: reduce) { .tabs .tab-liquido { transition: none; } @view-transition { navigation: none; } }
+
+/* ---------- Mapa: hoja que se desliza hacia arriba / abajo ---------- */
+.hoja.hoja-mapa {
+  top: 150px; bottom: 90px; padding: 0; display: flex; flex-direction: column; overflow: hidden;
+  will-change: transform; touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.hoja.hoja-mapa.animando { transition: transform 0.42s cubic-bezier(0.22, 0.9, 0.24, 1); }
+.hoja-mapa .hoja-cabeza { padding: 10px 16px 8px; cursor: grab; flex-shrink: 0; }
+.hoja-mapa .hoja-cabeza:active { cursor: grabbing; }
+.hoja-mapa .asa { margin: 0 auto 10px; width: 40px; }
+.hoja-mapa .hoja-cuerpo { flex: 1; min-height: 0; overflow: hidden; padding: 0 16px 16px; overscroll-behavior: contain; }
+.hoja-mapa.abierta-hoja .hoja-cuerpo { overflow-y: auto; touch-action: pan-y; scrollbar-width: none; }
+.hoja-mapa .hoja-cuerpo::-webkit-scrollbar { display: none; }
+.hoja-mapa .lista-mapa { margin-top: 0; padding-bottom: 8px; }
+
+/* ---------- Detalle del evento: Guardar · Compartir · Ver en mapa ---------- */
+.acciones-evento { display: flex; gap: 8px; }
+.acciones-evento .boton {
+  flex: 1 1 0; width: auto; min-width: 0; height: 46px; padding: 0 8px; gap: 6px;
+  flex-direction: row; font: 700 13px/1.2 var(--f-texto); white-space: nowrap; border-radius: 14px;
+}
+.acciones-evento .boton .ic { width: 18px; height: 18px; flex-shrink: 0; color: var(--primario); }
+.acciones-evento .boton span, .acciones-evento .boton { overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 340px) { .acciones-evento .boton { font-size: 12px; gap: 4px; padding: 0 6px; } }
+
+/* ---------- Guardar: el ícono dice el estado ---------- */
+/* Sin guardar: contorno (blanco sobre fotos y listas, rosa en el detalle). Guardado: relleno rosa. */
+.card-evento .guardar, .fila-evento .marcador { color: var(--texto); transition: color 0.15s ease, transform 0.15s ease; }
+.card-evento .guardar.activo, .fila-evento .marcador.activo { color: var(--primario); }
+.accion-guardar.activo { border-color: var(--rosa-borde); background: var(--vidrio-luz), linear-gradient(160deg, rgba(225, 153, 209, 0.2), rgba(225, 153, 209, 0.06)); }
+[data-guardar]:active { transform: scale(0.9); }
+.acciones-evento [data-guardar]:active { transform: scale(0.98); }
+
+/* ---------- Imágenes de eventos: tamaño fijo desde el primer momento ---------- */
+.fila-evento .miniatura { flex: 0 0 72px; width: 72px; height: 72px; aspect-ratio: 1; background-size: cover; background-position: center; background-repeat: no-repeat; background-color: rgba(255, 255, 255, 0.06); }
+.fila-evento > .flex1 { min-width: 0; }
+.card-evento .portada { background-size: cover; background-position: center; background-color: rgba(255, 255, 255, 0.06); }

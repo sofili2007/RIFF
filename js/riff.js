@@ -1400,7 +1400,7 @@ async function trazosVia(via, caja) {
   let lineas = [];
   for (const [i, q] of conAv.entries()) {
     if (i) await esperar(1100); // Nominatim pide máximo una consulta por segundo
-    lineas = lineas.concat(lineasVia(await nominatim(q, caja, "&limit=40&polygon_geojson=1"), via));
+    lineas = lineas.concat(lineasVia(await nominatim(q, caja, "&limit=40&polygon_geojson=1&dedupe=0"), via));
   }
   return lineas;
 }
@@ -1413,8 +1413,17 @@ async function ubicarDireccion(dir, venue = "") {
       const caja = [Math.min(...todos.map((c) => c[0])) - m, Math.max(...todos.map((c) => c[1])) + m, Math.max(...todos.map((c) => c[0])) + m, Math.min(...todos.map((c) => c[1])) - m].join(",");
       await esperar(1100);
       const B = await trazosVia(partes.cruce, caja);
-      const c = B.length && cruceDeVias(A, B);
-      if (c && c.d < 350) return { lat: c.lat, lng: c.lng, exacto: true };
+      let c = B.length && cruceDeVias(A, B);
+      // Segunda pasada solo alrededor del cruce encontrado: ahí el mapa devuelve todos los tramos de cada calle
+      if (c && c.d > 25 && c.d < 2500) {
+        const r = 0.008, cerca = [c.lng - r, c.lat + r, c.lng + r, c.lat - r].join(",");
+        await esperar(1100);
+        const A2 = await trazosVia(partes.principal, cerca); await esperar(1100);
+        const B2 = A2.length ? await trazosVia(partes.cruce, cerca) : [];
+        const c2 = B2.length && cruceDeVias(A2, B2);
+        if (c2 && c2.d < c.d) c = c2;
+      }
+      if (c && c.d < 400) return { lat: c.lat, lng: c.lng, exacto: c.d < 150 };
     }
     await esperar(1100);
   }

@@ -254,7 +254,7 @@ function chipNuevo(texto, sel = false, extraClase = "") {
 function tarjetaEvento(ev, guardado) {
   return `<a class="card-evento" href="${linkEvento(ev)}">
     <div class="portada${/artista-/.test(ev.portada) ? " baja" : ""}" style="background-image:url('${imagen(ev.portada)}')">${/artista-/.test(ev.portada) ? `<span class="foto-artista" style="background-image:url('${imagen(ev.portada)}')"></span>` : ""}
-      <button class="guardar${guardado ? " rosa" : ""}" data-guardar="${ev.id}" aria-label="Guardar">${ic("bookmark", "s18", guardado)}</button></div>
+      <button class="guardar${guardado ? " activo" : ""}" data-guardar="${ev.id}" aria-pressed="${guardado}" aria-label="${guardado ? "Quitar de guardados" : "Guardar"}">${ic("bookmark", "s18", guardado)}</button></div>
     <div class="info"><h3 class="titulo">${esc(ev.titulo)}</h3>
       <p class="meta">${ic("calendar", "s16")}<span>${esc(fFecha(ev))}</span></p>
       <div class="fila entre g8"><p class="meta flex1">${ic("pin", "s16")}<span>${esc(corto(ev.venue))}</span></p><span class="precio">${esc(ev.precio_desde == null ? "" : fPrecio(ev))}</span></div></div></a>`;
@@ -265,29 +265,39 @@ function filaEvento(ev, guardado, conMarcador = true) {
     <div class="flex1" style="min-width:0"><h3 class="titulo elipsis">${esc(ev.titulo)}</h3>
       <p class="linea elipsis">${esc(corto(ev.venue))}${fKm(ev) ? " · " + fKm(ev) : ""}</p>
       <div class="fila g8"><span class="linea elipsis flex1">${esc(fFecha(ev))}</span><span class="precio" style="font-size:13px">${esc(fDesde(ev))}</span></div></div>
-    ${conMarcador ? `<button class="marcador${guardado ? "" : " vacio"}" data-guardar="${ev.id}" aria-label="Guardar">${ic("bookmark", "s22", guardado)}</button>` : ""}</a>`;
+    ${conMarcador ? `<button class="marcador${guardado ? " activo" : ""}" data-guardar="${ev.id}" aria-pressed="${guardado}" aria-label="${guardado ? "Quitar de guardados" : "Guardar"}">${ic("bookmark", "s22", guardado)}</button>` : ""}</a>`;
 }
-// Botones de guardar dentro de tarjetas: guardan sin entrar al detalle
+// Botones de guardar (tarjetas, filas y detalle): el ícono muestra el estado.
+// Sin guardar = contorno blanco · Guardado = relleno rosa. Cambia al tocar y se corrige si falla.
+const estaLleno = (b) => b.classList.contains("activo");
 document.addEventListener("click", async (e) => {
   const b = e.target.closest("[data-guardar]"); if (!b) return;
   e.preventDefault(); e.stopPropagation();
+  if (b.dataset.ocupado) return;
   const id = Number(b.dataset.guardar);
-  const lleno = b.classList.contains("rosa") || (b.classList.contains("marcador") && !b.classList.contains("vacio"));
-  if (lleno) {
-    await quitarGuardado(id);
-    pintarMarcador(b, false);
-    aviso("Quitado de tus guardados", { texto: "Deshacer", hacer: async () => { await guardar(id); pintarMarcador(b, true); } });
-  } else if (await guardar(id)) {
-    pintarMarcador(b, true);
-    aviso("Guardado en tu calendario", { texto: "Ver", hacer: () => ir("guardado.html?id=" + id) });
-  }
+  const estaba = estaLleno(b);
+  b.dataset.ocupado = "1";
+  pintarMarcadores(id, !estaba); // al instante
+  const ok = estaba ? (await quitarGuardado(id), true) : await guardar(id);
+  delete b.dataset.ocupado;
+  if (!ok) { pintarMarcadores(id, estaba); return; }
+  if (estaba) aviso("Quitado de tus guardados", { texto: "Deshacer", hacer: async () => { pintarMarcadores(id, true); if (!(await guardar(id))) pintarMarcadores(id, false); } });
+  else aviso("Guardado en tu calendario", { texto: "Recordatorio", hacer: () => ir("guardado.html?id=" + id) });
   b.dispatchEvent(new CustomEvent("riff:guardado", { bubbles: true }));
 }, true);
+// Pinta todos los botones del mismo evento en la pantalla (p. ej. el mismo evento en dos carruseles)
+function pintarMarcadores(id, lleno) { $$(`[data-guardar="${id}"]`).forEach((b) => pintarMarcador(b, lleno)); }
 function pintarMarcador(b, lleno) {
-  if (b.classList.contains("guardar")) b.classList.toggle("rosa", lleno);
-  else b.classList.toggle("vacio", !lleno);
-  b.innerHTML = ic("bookmark", b.classList.contains("guardar") ? "s18" : "s22", lleno);
+  b.classList.toggle("activo", lleno);
+  b.setAttribute("aria-pressed", String(lleno));
+  b.setAttribute("aria-label", lleno ? "Quitar de guardados" : "Guardar");
+  const tam = b.classList.contains("guardar") ? "s18" : b.classList.contains("accion-guardar") ? "s20" : "s22";
+  const viejo = $("svg", b);
+  const nuevo = document.createRange().createContextualFragment(ic("bookmark", tam, lleno)).firstElementChild;
+  viejo ? viejo.replaceWith(nuevo) : b.prepend(nuevo);
 }
+// Al volver con «atrás» el navegador puede mostrar una copia vieja: se recarga para que los guardados sean reales
+window.addEventListener("pageshow", (e) => { if (e.persisted) location.reload(); });
 
 function presupuestoDe(p) {
   if (!p || (p.presupuesto_min == null && p.presupuesto_max == null)) return null;
@@ -387,10 +397,8 @@ async function entrarSegunRol(organizador) {
   if (organizador) aviso("Esta cuenta es de público, te llevamos a tu feed");
   ir(p?.generos?.length ? "feed.html" : "vincular-gustos.html");
 }
-const LARGO_CODIGO = 8; // Supabase → Authentication → Sign In / Providers → Email → «Email OTP length»
 const errorCorreo = (error) =>
-  /signups not allowed|not found|no user/i.test(error.message) ? "No encontramos una cuenta con ese correo. Revisa que esté bien escrito o crea una cuenta."
-  : /rate|seconds|too many|security purposes/i.test(error.message) ? "Ya te enviamos un correo hace poco. Espera un minuto y vuelve a intentarlo."
+  /rate|seconds|too many|security purposes/i.test(error.message) ? "Ya te enviamos un correo hace poco. Espera un minuto y vuelve a intentarlo."
   : "No pudimos enviar el correo. Intenta de nuevo en un momento.";
 
 async function formularioIngreso({ organizador }) {
@@ -399,10 +407,10 @@ async function formularioIngreso({ organizador }) {
   // Llegó desde el enlace del correo
   const hash = new URLSearchParams(location.hash.slice(1));
   if (hash.get("error_code")) aviso(/expired/.test(hash.get("error_code")) ? "El enlace del correo venció. Pide uno nuevo." : "Ese enlace ya no sirve. Pide uno nuevo.");
-  if (params.has("enlace") || params.has("nueva-clave")) {
+  if (params.has("nueva-clave")) {
     const { data } = await sb.auth.getSession();
-    if (data.session && params.has("nueva-clave")) return flujoCorreo({ modo: "clave", organizador, destino, paso: 3 });
-    if (data.session) return entrarSegunRol(organizador);
+    if (data.session) return recuperarClave({ organizador, destino, paso: 3 });
+    if (!hash.get("error_code")) aviso("Abre el enlace del correo en este mismo navegador para crear tu contraseña.");
   }
   const aviso1 = $(".tarjeta.borde-rosa", contenido);
   if (aviso1 && !params.has("nuevo")) aviso1.remove();
@@ -418,18 +426,11 @@ async function formularioIngreso({ organizador }) {
   const olvido = document.createElement("button");
   olvido.type = "button"; olvido.className = "enlace olvido"; olvido.textContent = "¿Olvidaste tu contraseña?";
   clave.campo.appendChild(olvido);
-  // Otra forma de entrar: código al correo
-  const otra = document.createElement("div");
-  otra.className = "pila g12 otra-forma";
-  otra.innerHTML = `<div class="fila g12"><span class="separador flex1"></span><span class="p12 suave">o</span><span class="separador flex1"></span></div>
-    <button type="button" class="boton secundario" data-codigo>${ic("mail", "s18")}Entrar con un código al correo</button>`;
-  boton.after(otra);
   const validar = () => { const ok = correoValido(correo.value) && clave.value.length >= 6; habilitar(boton, ok); return ok; };
   [correo, clave].forEach((i) => i.addEventListener("input", () => { errorCampo(i, ""); validar(); }));
   clave.addEventListener("keydown", (e) => e.key === "Enter" && boton.click());
   validar();
-  olvido.onclick = () => flujoCorreo({ modo: "clave", correoInicial: correo.value, organizador, destino });
-  $("[data-codigo]", otra).onclick = () => flujoCorreo({ modo: "codigo", correoInicial: correo.value, organizador, destino });
+  olvido.onclick = () => recuperarClave({ correoInicial: correo.value, organizador, destino });
   boton.onclick = async () => {
     if (!validar()) return;
     boton.classList.add("cargando");
@@ -440,50 +441,47 @@ async function formularioIngreso({ organizador }) {
   };
 }
 
-// Entrar con código o recuperar la contraseña, en la misma pantalla:
-// 1) correo → 2) código que llega al correo (o el botón del correo) → 3) contraseña nueva (solo al recuperar)
-function flujoCorreo({ modo, correoInicial = "", organizador, destino, paso: pasoInicial = 1 }) {
+// Recuperar la contraseña, en la misma pantalla:
+// 1) correo → 2) «revisa tu correo» (llega un enlace) → 3) contraseña nueva (al abrir el enlace)
+function recuperarClave({ correoInicial = "", organizador, destino, paso: pasoInicial = 1 }) {
   const contenido = $(".contenido", pantalla);
   const original = [...contenido.childNodes];
   const atras = $(".nav [data-volver]", pantalla);
-  const recuperar = modo === "clave";
   let paso = pasoInicial, correo = correoInicial.trim(), reloj;
   const salir = () => {
     clearInterval(reloj);
+    if (pasoInicial === 3) return ir((organizador ? "org-" : "") + "iniciar-sesion.html");
     contenido.replaceChildren(...original);
     if (atras) { atras.removeAttribute("data-riff"); atras.onclick = null; }
   };
   if (atras) {
     atras.setAttribute("data-riff", "");
-    atras.onclick = (e) => { e.preventDefault(); if (paso === 2) pintar(1); else if (paso === 3 && pasoInicial === 3) ir((organizador ? "org-" : "") + "iniciar-sesion.html"); else salir(); };
+    atras.onclick = (e) => { e.preventDefault(); if (paso === 2) pintar(1); else salir(); };
   }
   const cabecera = (icono, titulo, texto) => `<div><span class="icono-correo">${ic(icono, "s28")}</span>
     <h1 class="h1 mt16">${titulo}</h1><p class="cuerpo suave mt8">${texto}</p></div>`;
-
-  async function enviar(boton) {
+  const enviar = async (boton) => {
     boton?.classList.add("cargando");
-    const { error } = recuperar
-      ? await sb.auth.resetPasswordForEmail(correo, { redirectTo: destino + "?nueva-clave=1" })
-      : await sb.auth.signInWithOtp({ email: correo, options: { shouldCreateUser: false, emailRedirectTo: destino + "?enlace=1" } });
+    const { error } = await sb.auth.resetPasswordForEmail(correo, { redirectTo: destino + "?nueva-clave=1" });
     boton?.classList.remove("cargando");
     return error;
-  }
+  };
 
   function pintar(n) {
     paso = n; clearInterval(reloj);
     if (n === 1) {
       contenido.innerHTML = `<div class="pila g16 entrada-flujo" style="padding-top:8px">
-        ${cabecera(recuperar ? "key" : "mail", recuperar ? "recupera tu cuenta" : "entra con un código", recuperar ? "Escribe el correo de tu cuenta y te enviaremos un código para crear una contraseña nueva." : "Te enviaremos un código a tu correo para que entres sin contraseña.")}
+        ${cabecera("key", "recupera tu cuenta", "Escribe el correo de tu cuenta. Te enviaremos un enlace para crear una contraseña nueva.")}
         <div class="campo mt8"><label>Correo</label><div class="caja"></div></div>
-        <button type="button" class="boton deshabilitado mt8" data-enviar>Enviar código</button></div>`;
+        <button type="button" class="boton deshabilitado mt8" data-enviar>Enviar enlace</button></div>`;
       const input = campoReal($(".campo", contenido), { tipo: "email", nombre: "correo", placeholder: "tu@correo.com", valor: correo, autocomplete: "email" });
       const b = $("[data-enviar]", contenido);
-      const validar = () => { habilitar(b, correoValido(input.value)); };
+      const validar = () => habilitar(b, correoValido(input.value));
       input.addEventListener("input", () => { errorCampo(input, ""); validar(); });
       input.addEventListener("keydown", (e) => e.key === "Enter" && b.click());
       validar(); setTimeout(() => input.focus(), 50);
       b.onclick = async () => {
-        if (!correoValido(input.value)) return;
+        if (!correoValido(input.value) || b.classList.contains("cargando")) return;
         correo = input.value.trim();
         const error = await enviar(b);
         if (error) return errorCampo(input, errorCorreo(error));
@@ -492,69 +490,45 @@ function flujoCorreo({ modo, correoInicial = "", organizador, destino, paso: pas
     }
     if (n === 2) {
       contenido.innerHTML = `<div class="pila g16 entrada-flujo" style="padding-top:8px">
-        ${cabecera("mail", "revisa tu correo", `Escribe el código de ${LARGO_CODIGO} dígitos que enviamos a <b style="color:#fff">${esc(correo)}</b>. Si el correo trae un botón, también puedes tocarlo.`)}
-        <div class="codigo mt8" role="group" aria-label="Código de ${LARGO_CODIGO} dígitos">${Array.from({ length: LARGO_CODIGO }, (_, i) => `<input inputmode="numeric" autocomplete="${i ? "off" : "one-time-code"}" maxlength="1" aria-label="Dígito ${i + 1}">`).join("")}</div>
-        <p class="ayuda" data-ayuda>Revisa también la carpeta de spam. El código vence en 1 hora.</p>
-        <button type="button" class="boton deshabilitado" data-verificar>${recuperar ? "Continuar" : "Entrar"}</button>
-        <div class="fila entre"><button type="button" class="enlace p14b" data-otro>Usar otro correo</button><button type="button" class="enlace p14b reenviar" data-reenviar></button></div></div>`;
-      const cajas = $$(".codigo input", contenido);
-      const grupo = $(".codigo", contenido), ayuda = $("[data-ayuda]", contenido);
-      const b = $("[data-verificar]", contenido), reenviar = $("[data-reenviar]", contenido);
-      const codigo = () => cajas.map((c) => c.value).join("");
-      const revisar = () => { cajas.forEach((c) => c.classList.toggle("lleno", !!c.value)); habilitar(b, codigo().length === LARGO_CODIGO); };
-      const repartir = (desde, texto) => { const d = texto.replace(/\D/g, "").split(""); d.forEach((x, k) => cajas[desde + k] && (cajas[desde + k].value = x)); (cajas[Math.min(desde + d.length, LARGO_CODIGO - 1)]).focus(); };
-      cajas.forEach((c, i) => {
-        c.addEventListener("input", () => {
-          grupo.classList.remove("error"); ayuda.classList.remove("error-texto");
-          if (c.value.length > 1) repartir(i, c.value); else { c.value = c.value.replace(/\D/g, ""); if (c.value && cajas[i + 1]) cajas[i + 1].focus(); }
-          revisar(); if (codigo().length === LARGO_CODIGO) b.click();
-        });
-        c.addEventListener("keydown", (e) => { if (e.key === "Backspace" && !c.value && cajas[i - 1]) { cajas[i - 1].focus(); cajas[i - 1].value = ""; revisar(); } });
-        c.addEventListener("paste", (e) => { e.preventDefault(); repartir(i, e.clipboardData.getData("text")); revisar(); if (codigo().length === LARGO_CODIGO) b.click(); });
-      });
-      setTimeout(() => cajas[0].focus(), 50);
+        ${cabecera("mail", "revisa tu correo", `Si <b style="color:#fff">${esc(correo)}</b> tiene una cuenta en RIFF, te llegará un correo con el enlace <b style="color:#fff">«Reset password»</b>. Ábrelo en este mismo navegador para crear tu contraseña nueva.`)}
+        <p class="ayuda">¿No lo ves? Revisa la carpeta de spam o promociones. El enlace vence en 1 hora.</p>
+        <button type="button" class="boton secundario reenviar" data-reenviar></button>
+        <div class="fila entre"><button type="button" class="enlace p14b" data-otro>Usar otro correo</button><button type="button" class="enlace p14b" data-volver-inicio>Volver a iniciar sesión</button></div></div>`;
+      const reenviar = $("[data-reenviar]", contenido);
       let espera = 60;
-      const contar = () => { reenviar.disabled = espera > 0; reenviar.textContent = espera > 0 ? `Reenviar en ${espera} s` : "Reenviar código"; };
-      contar(); reloj = setInterval(() => { espera--; contar(); if (espera <= 0) clearInterval(reloj); }, 1000);
+      const contar = () => { reenviar.disabled = espera > 0; reenviar.classList.toggle("deshabilitado", espera > 0); reenviar.textContent = espera > 0 ? `Reenviar correo en ${espera} s` : "Reenviar correo"; };
+      const arrancar = () => { espera = 60; contar(); clearInterval(reloj); reloj = setInterval(() => { espera--; contar(); if (espera <= 0) clearInterval(reloj); }, 1000); };
+      arrancar();
       reenviar.onclick = async () => {
         if (espera > 0) return;
-        const error = await enviar();
-        if (error) { ayuda.textContent = errorCorreo(error); ayuda.classList.add("error-texto"); return; }
-        aviso("Te enviamos un código nuevo"); espera = 60; contar(); reloj = setInterval(() => { espera--; contar(); if (espera <= 0) clearInterval(reloj); }, 1000);
+        const error = await enviar(reenviar);
+        if (error) return aviso(errorCorreo(error));
+        aviso("Te enviamos el correo otra vez"); arrancar();
       };
       $("[data-otro]", contenido).onclick = () => pintar(1);
-      b.onclick = async () => {
-        if (codigo().length !== LARGO_CODIGO || b.classList.contains("cargando")) return;
-        b.classList.add("cargando");
-        const { error } = await sb.auth.verifyOtp({ email: correo, token: codigo(), type: recuperar ? "recovery" : "email" });
-        b.classList.remove("cargando");
-        if (error) {
-          grupo.classList.add("error"); ayuda.classList.add("error-texto");
-          ayuda.textContent = /expired/i.test(error.message) ? "El código venció. Toca «Reenviar código»." : "El código no es correcto. Revísalo e intenta de nuevo.";
-          return;
-        }
-        if (recuperar) pintar(3); else entrarSegunRol(organizador);
-      };
+      $("[data-volver-inicio]", contenido).onclick = salir;
     }
     if (n === 3) {
       contenido.innerHTML = `<div class="pila g16 entrada-flujo" style="padding-top:8px">
         ${cabecera("lock", "crea tu nueva contraseña", "Usa al menos 6 caracteres. Después entrarás directo a tu cuenta.")}
         <div class="campo mt8" data-c1><label>Contraseña nueva</label><div class="caja"></div></div>
         <div class="campo" data-c2><label>Repite la contraseña</label><div class="caja"></div></div>
-        <button type="button" class="boton deshabilitado mt8" data-guardar>Guardar y entrar</button></div>`;
+        <button type="button" class="boton deshabilitado mt8" data-guardar-clave>Guardar y entrar</button></div>`;
       const c1 = campoReal($("[data-c1]", contenido), { tipo: "password", nombre: "nueva", placeholder: "Mínimo 6 caracteres", autocomplete: "new-password" });
       const c2 = campoReal($("[data-c2]", contenido), { tipo: "password", nombre: "repetir", placeholder: "Escríbela otra vez", autocomplete: "new-password" });
-      const b = $("[data-guardar]", contenido);
+      const b = $("[data-guardar-clave]", contenido);
       const validar = () => { const ok = c1.value.length >= 6 && c2.value === c1.value; habilitar(b, ok); return ok; };
       [c1, c2].forEach((i) => i.addEventListener("input", () => { errorCampo(i, ""); validar(); }));
       c2.addEventListener("blur", () => c2.value && c2.value !== c1.value && errorCampo(c2, "Las contraseñas no coinciden"));
+      c2.addEventListener("keydown", (e) => e.key === "Enter" && b.click());
       setTimeout(() => c1.focus(), 50);
       b.onclick = async () => {
         if (!validar()) return;
         b.classList.add("cargando");
         const { error } = await sb.auth.updateUser({ password: c1.value });
         b.classList.remove("cargando");
-        if (error) return errorCampo(c1, /same|different/i.test(error.message) ? "Usa una contraseña distinta a la anterior." : /session|jwt|expired/i.test(error.message) ? "El enlace o código venció. Vuelve a pedir uno." : "No pudimos guardarla. Intenta de nuevo.");
+        if (error) return errorCampo(c1, /same|different/i.test(error.message) ? "Usa una contraseña distinta a la anterior." : /session|jwt|expired|missing/i.test(error.message) ? "El enlace venció. Vuelve a pedir uno desde «¿Olvidaste tu contraseña?»." : "No pudimos guardarla. Intenta de nuevo.");
+        history.replaceState(null, "", location.pathname);
         aviso("Listo, tu contraseña quedó actualizada");
         setTimeout(() => entrarSegunRol(organizador), 900);
       };
@@ -815,9 +789,18 @@ pantallas["evento"] = async () => {
   $("p.cuerpo", contenido).textContent = ev.descripcion;
   const [bGuardar, bCompartir, bMapa] = $$(".fila.g8.mt16 > a.boton, .fila.g8.mt16 > button.boton", contenido).length ? $$(".fila.g8.mt16 .boton", contenido) : [];
   const yaGuardado = await estaGuardado(ev.id);
+  const filaAcciones = bGuardar?.parentElement;
+  if (filaAcciones) {
+    filaAcciones.className = "acciones-evento mt16";
+    $(".fila.g6.mt12", contenido).after(filaAcciones); // justo debajo del título: siempre a la vista
+    $$(".boton", filaAcciones).forEach((x) => x.removeAttribute("style"));
+  }
   if (bGuardar) {
-    bGuardar.href = "guardado.html?id=" + ev.id;
-    if (yaGuardado) bGuardar.innerHTML = bGuardar.innerHTML.replace("Guardar", "Guardado"), (bGuardar.style.color = "var(--primario)");
+    const nuevo = document.createElement("button");
+    nuevo.type = "button"; nuevo.className = "boton secundario accion-guardar"; nuevo.dataset.guardar = ev.id;
+    nuevo.innerHTML = `${ic("bookmark", "s20")}<span>Guardar</span>`;
+    bGuardar.replaceWith(nuevo);
+    pintarMarcador(nuevo, yaGuardado);
   }
   const compartir = async (e) => {
     e.preventDefault();
@@ -923,7 +906,7 @@ pantallas["mis-guardados"] = async () => {
       : `<div class="mensaje-vacio" style="margin-top:60px"><div class="circulo-vacio">${ic("bookmark", "s32")}</div><h2 class="h3 mt16">no tienes eventos guardados</h2><p class="cuerpo suave mt8">Toca el marcador de cualquier evento para guardarlo.</p><a class="boton primario mt24" href="feed.html">Explorar eventos</a></div>`;
   };
   contenido.addEventListener("riff:guardado", () => setTimeout(pintar, 400));
-  pintar();
+  await pintar();
 };
 
 // ---------- mapa ----------
@@ -937,11 +920,84 @@ function mapaBase(L, contenedor, centro, zoom = 12) {
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© colaboradores de OpenStreetMap" }).addTo(mapa);
   return mapa;
 }
+// Hoja inferior que se desliza: arriba para abrir la lista, abajo para cerrarla.
+// Sigue el dedo y al soltar se acomoda (según la posición y la velocidad) con una animación suave.
+function hojaArrastrable(hoja) {
+  const cabeza = $(".hoja-cabeza", hoja), cuerpo = $(".hoja-cuerpo", hoja);
+  let estado = "cerrada", cerradaY = 0, arrastre = null, primera = true;
+  const ponerY = (y, animar) => { hoja.classList.toggle("animando", !!animar); hoja.style.transform = `translateY(${y}px)`; };
+  const medir = () => {
+    // Cerrada: se ve la cabeza y el primer elemento (el evento más cercano)
+    const primero = cuerpo.firstElementChild?.querySelector?.(".fila-evento") || cuerpo.firstElementChild;
+    const asoma = cabeza.offsetHeight + (primero ? Math.min(primero.offsetHeight + 16, 220) : 0) + 8;
+    cerradaY = Math.max(0, hoja.offsetHeight - asoma);
+  };
+  const ir = (nuevo, animar = true) => {
+    estado = nuevo;
+    hoja.classList.toggle("abierta-hoja", nuevo === "abierta");
+    cabeza.setAttribute("aria-expanded", String(nuevo === "abierta"));
+    cabeza.setAttribute("aria-label", nuevo === "abierta" ? "Desliza hacia abajo para cerrar la lista" : "Desliza hacia arriba para ver la lista");
+    if (nuevo === "cerrada") cuerpo.scrollTop = 0;
+    ponerY(nuevo === "abierta" ? 0 : cerradaY, animar && !primera); // al cargar el mapa no se anima
+    primera = false;
+  };
+  const empezar = (y) => { arrastre = { y0: y, base: estado === "abierta" ? 0 : cerradaY, ultimo: y, t: performance.now(), v: 0, movio: false }; };
+  const mover = (y) => {
+    if (!arrastre) return false;
+    const dy = y - arrastre.y0;
+    if (!arrastre.movio && Math.abs(dy) < 6) return false;
+    arrastre.movio = true;
+    const ahora = performance.now();
+    arrastre.v = (y - arrastre.ultimo) / Math.max(1, ahora - arrastre.t); arrastre.ultimo = y; arrastre.t = ahora;
+    let nuevaY = arrastre.base + dy;
+    if (nuevaY < 0) nuevaY = nuevaY / 4; // resistencia elástica al pasar el tope
+    if (nuevaY > cerradaY) nuevaY = cerradaY + (nuevaY - cerradaY) / 4;
+    ponerY(nuevaY, false);
+    return true;
+  };
+  const soltar = () => {
+    if (!arrastre) return;
+    const { movio, v, base, ultimo, y0 } = arrastre; arrastre = null;
+    if (!movio) return;
+    const y = base + (ultimo - y0);
+    const abrirla = v < -0.35 ? true : v > 0.35 ? false : y < cerradaY / 2;
+    ir(abrirla ? "abierta" : "cerrada");
+    hoja.dataset.recienArrastrada = "1"; setTimeout(() => delete hoja.dataset.recienArrastrada, 60);
+  };
+  // Táctil: desde la cabeza siempre; desde la lista cuando está cerrada o cuando está arriba del todo y se baja
+  hoja.addEventListener("touchstart", (e) => {
+    const enCuerpo = e.target.closest(".hoja-cuerpo");
+    if (enCuerpo && estado === "abierta" && cuerpo.scrollTop > 0) return;
+    empezar(e.touches[0].clientY);
+    arrastre.enCuerpo = !!enCuerpo;
+  }, { passive: true });
+  hoja.addEventListener("touchmove", (e) => {
+    if (!arrastre) return;
+    const dy = e.touches[0].clientY - arrastre.y0;
+    if (arrastre.enCuerpo && estado === "abierta" && dy < 0 && !arrastre.movio) { arrastre = null; return; } // deja que la lista haga scroll
+    if (mover(e.touches[0].clientY)) e.preventDefault();
+  }, { passive: false });
+  hoja.addEventListener("touchend", soltar);
+  hoja.addEventListener("touchcancel", soltar);
+  // Mouse (computador): arrastrar desde cualquier parte de la hoja
+  hoja.addEventListener("mousedown", (e) => { if (estado === "abierta" && e.target.closest(".hoja-cuerpo") && cuerpo.scrollTop > 0) return; empezar(e.clientY); });
+  window.addEventListener("mousemove", (e) => { if (arrastre && mover(e.clientY)) e.preventDefault(); });
+  window.addEventListener("mouseup", soltar);
+  // Un arrastre no debe abrir el evento que estaba debajo del dedo
+  hoja.addEventListener("click", (e) => { if (hoja.dataset.recienArrastrada) { e.preventDefault(); e.stopPropagation(); } }, true);
+  // Alternativa sin gesto (accesibilidad): tocar la cabeza o usar Enter/Espacio
+  cabeza.addEventListener("click", (e) => { if (e.target.closest("button, a")) return; ir(estado === "abierta" ? "cerrada" : "abierta"); });
+  cabeza.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ir(estado === "abierta" ? "cerrada" : "abierta"); } });
+  window.addEventListener("resize", () => { medir(); ir(estado, false); });
+  return { medir, ir, estado: () => estado };
+}
 async function pantallaMapa() {
   $$(".mapa, .cluster, .pin, .yo, .zona, .credito-mapa, .tarjeta, .velo, .hoja, .hoja-acciones, .alerta", pantalla).forEach((el) => el.remove());
   const div = document.createElement("div"); div.className = "mapa-real"; pantalla.prepend(div);
-  const hoja = document.createElement("div"); hoja.className = "hoja"; hoja.style.paddingBottom = "90px";
+  const hoja = document.createElement("div"); hoja.className = "hoja hoja-mapa";
+  hoja.innerHTML = `<div class="hoja-cabeza" role="button" tabindex="0" aria-expanded="false" aria-label="Desliza hacia arriba para ver la lista"><div class="asa"></div><div data-cabeza></div></div><div class="hoja-cuerpo"></div>`;
   pantalla.insertBefore(hoja, $(".tabs", pantalla));
+  const hojaDeslizable = hojaArrastrable(hoja);
   const botonYo = document.createElement("button"); botonYo.className = "boton-circulo boton-ubicacion"; botonYo.innerHTML = ic("locate", "s22"); botonYo.setAttribute("aria-label", "Mi ubicación");
   pantalla.appendChild(botonYo);
   const [L, evs, gs] = await Promise.all([cargarLeaflet(), eventos(), guardados()]);
@@ -962,37 +1018,46 @@ async function pantallaMapa() {
   let yo;
   const ponerYo = (u) => { if (!u) return; if (yo) yo.remove(); yo = L.marker([u.lat, u.lng], { icon: L.divIcon({ className: "yo-riff", html: '<span class="yo"></span>', iconSize: [0, 0] }), interactive: false }).addTo(mapa); };
   ponerYo(miUbicacion());
-  const lista = () => {
-    const ordenados = [...evs].sort((a, b) => (km(a) ?? 99) - (km(b) ?? 99));
-    hoja.classList.remove("abierta");
-    hoja.innerHTML = `<div class="asa"></div><h2 class="h3">${evs.length} eventos ${miUbicacion() ? "cerca de ti" : "en Bogotá"}</h2><p class="p12 suave">${miUbicacion() ? "Ordenados por distancia" : "Activa tu ubicación para ver la distancia"} · toca para ${"ver la lista"}</p><div class="lista lista-mapa oculto">${ordenados.map((e) => filaEvento(e, ids.has(e.id))).join("")}</div>`;
-    hoja.onclick = (ev) => { if (ev.target.closest("a, button")) return; hoja.classList.toggle("abierta"); $(".lista-mapa", hoja).classList.toggle("oculto"); };
+  const cabeza = $("[data-cabeza]", hoja), cuerpo = $(".hoja-cuerpo", hoja);
+  let vista = "lista";
+  // Más cercanos primero (con tu ubicación; si no la hay, desde el centro de Bogotá) y, a igual distancia, el más pronto
+  const lista = (abrirla = false) => {
+    vista = "lista";
+    const u = miUbicacion();
+    const ordenados = [...evs].sort((a, b) => (km(a) ?? 999) - (km(b) ?? 999) || new Date(a.fecha) - new Date(b.fecha));
+    cabeza.innerHTML = `<h2 class="h3">${evs.length} eventos ${u ? "cerca de ti" : "en Bogotá"}</h2><p class="p12 suave">${u ? "Del más cercano al más lejano" : "Activa tu ubicación para ordenarlos por cercanía"} · desliza hacia arriba</p>`;
+    cuerpo.innerHTML = `<div class="lista lista-mapa">${ordenados.map((e) => filaEvento(e, ids.has(e.id))).join("")}</div>`;
+    hojaDeslizable.medir(); hojaDeslizable.ir(abrirla ? "abierta" : "cerrada");
   };
   const abrir = (e) => {
+    vista = "evento";
     mapa.setView([e.lat, e.lng], Math.max(mapa.getZoom(), 14));
-    hoja.onclick = null; hoja.classList.remove("abierta");
     const ruta = `https://www.google.com/maps/dir/?api=1&destination=${e.lat},${e.lng}`;
-    hoja.innerHTML = `<div class="asa"></div><div class="fila entre"><p class="p12 suave">${esc(fKm(e) || "Bogotá")}</p><button class="enlace p14b" data-cerrar>Ver todos</button></div>
-      <div class="mt8">${filaEvento(e, ids.has(e.id))}</div>
-      <div class="fila g8 mt12"><a class="boton secundario" href="${ruta}" target="_blank" rel="noopener" style="height:44px">Cómo llegar</a><a class="boton primario" href="evento.html?id=${e.id}" style="height:44px">Ver evento</a></div>`;
-    $("[data-cerrar]", hoja).onclick = lista;
+    cabeza.innerHTML = `<div class="fila entre"><p class="p12 suave">${esc(fKm(e) || "Bogotá")}</p><button class="enlace p14b" data-cerrar>Ver todos</button></div>`;
+    cuerpo.innerHTML = `<div>${filaEvento(e, ids.has(e.id))}
+      <div class="fila g8 mt12"><a class="boton secundario" href="${ruta}" target="_blank" rel="noopener" style="height:44px">Cómo llegar</a><a class="boton primario" href="evento.html?id=${e.id}" style="height:44px">Ver evento</a></div></div>`;
+    $("[data-cerrar]", cabeza).onclick = (x) => { x.stopPropagation(); lista(true); };
+    hojaDeslizable.medir(); hojaDeslizable.ir("cerrada");
   };
   const abrirLugar = (grupo) => {
+    vista = "lugar";
     const e = grupo[0];
     mapa.setView([e.lat, e.lng], Math.max(mapa.getZoom(), 14));
-    hoja.onclick = null; hoja.classList.add("abierta");
     const ruta = `https://www.google.com/maps/dir/?api=1&destination=${e.lat},${e.lng}`;
     const ordenados = [...grupo].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
-    hoja.innerHTML = `<div class="asa"></div><div class="fila entre"><div><h2 class="h3">${esc(e.venue || "Este lugar")}</h2><p class="p12 suave">${grupo.length} eventos${fKm(e) ? " · " + esc(fKm(e)) : ""}</p></div><button class="enlace p14b" data-cerrar>Ver todos</button></div>
-      <a class="boton secundario mt12" href="${ruta}" target="_blank" rel="noopener" style="height:44px">Cómo llegar</a>
-      <div class="lista lista-mapa">${ordenados.map((x) => filaEvento(x, ids.has(x.id))).join("")}</div>`;
-    $("[data-cerrar]", hoja).onclick = lista;
+    cabeza.innerHTML = `<div class="fila entre g8"><div class="flex1" style="min-width:0"><h2 class="h3 elipsis">${esc(e.venue || "Este lugar")}</h2><p class="p12 suave">${grupo.length} eventos${fKm(e) ? " · " + esc(fKm(e)) : ""}</p></div><button class="enlace p14b" data-cerrar>Ver todos</button></div>`;
+    cuerpo.innerHTML = `<a class="boton secundario" href="${ruta}" target="_blank" rel="noopener" style="height:44px">Cómo llegar</a>
+      <div class="lista lista-mapa mt12">${ordenados.map((x) => filaEvento(x, ids.has(x.id))).join("")}</div>`;
+    $("[data-cerrar]", cabeza).onclick = (x) => { x.stopPropagation(); lista(true); };
+    hojaDeslizable.medir(); hojaDeslizable.ir("abierta");
   };
+  // Cuando llega (o cambia) tu ubicación, se reordena la lista
+  const alUbicar = (u) => { if (!u) return; ponerYo(u); if (vista === "lista") lista(hojaDeslizable.estado() === "abierta"); };
   lista();
-  botonYo.onclick = async () => { const u = await pedirUbicacion(); if (!u) return aviso("Activa la ubicación en tu navegador para verte en el mapa"); ponerYo(u); mapa.setView([u.lat, u.lng], 14); lista(); };
+  botonYo.onclick = async () => { const u = await pedirUbicacion(); if (!u) return aviso("Activa la ubicación en tu navegador para verte en el mapa"); alUbicar(u); mapa.setView([u.lat, u.lng], 14); };
   const id = Number(params.get("id"));
   if (id && evs.find((e) => e.id === id)) abrir(evs.find((e) => e.id === id));
-  else if (!miUbicacion()) pedirUbicacion().then((u) => { if (u) { ponerYo(u); lista(); } });
+  pedirUbicacion().then(alUbicar); // siempre se pide la ubicación actual al abrir el mapa
   setTimeout(() => mapa.invalidateSize(), 300);
 }
 ["mapa", "mapa-lista", "mapa-pin", "mapa-hoja-completa", "mapa-cluster", "mapa-sin-ubicacion", "mapa-zona-vacia", "mapa-como-llegar"].forEach((id) => (pantallas[id] = id === "mapa" ? pantallaMapa : () => ir("mapa.html")));

@@ -124,6 +124,8 @@ async function guardados() {
   const { data } = await sb.from("guardados").select("*, eventos(*)").eq("usuario_id", u.id);
   return (_guardados = (data || []).filter((g) => g.eventos).sort((a, b) => new Date(a.eventos.fecha) - new Date(b.eventos.fecha)));
 }
+// Un guardado sigue vigente hasta 3 horas después de que empieza (o de que termina, si tiene hora de fin)
+const vigente = (g) => new Date(g.eventos.fecha_fin || g.eventos.fecha) > Date.now() - 3 * 3600e3;
 async function estaGuardado(id) { return (await guardados()).some((g) => g.evento_id == id); }
 async function guardar(id) {
   const u = await usuario();
@@ -336,7 +338,7 @@ pantallas["selecciona-perfil"] = async () => {
   const p = await perfil();
   const nota = document.createElement("p");
   nota.className = "p14 suave mt16";
-  nota.innerHTML = `Ya iniciaste sesión como ${esc(p?.correo || u.email)}. <a class="enlace" href="${p?.rol === "organizador" ? "org-panel.html" : "feed.html"}">Continuar</a>`;
+  nota.innerHTML = `Ya iniciaste sesión como ${esc(p?.correo || u.email)}. Continúa como <a class="enlace" href="feed.html">público</a> o como <a class="enlace" href="org-panel.html">organizador o artista</a>.`;
   $(".pila", pantalla).before(nota);
 };
 
@@ -377,7 +379,12 @@ async function formularioCuenta({ organizador }) {
       options: { data: { nombre: nombre.value.trim(), apellido: apellido?.value.trim() || "", rol: organizador ? "organizador" : "publico", tipo } },
     });
     boton.classList.remove("cargando");
-    if (error) return errorCampo(/registered|already/i.test(error.message) ? correo : clave, /registered|already/i.test(error.message) ? "Ya existe una cuenta con este correo. Inicia sesión." : error.message);
+    if (error && /registered|already/i.test(error.message)) {
+      errorCampo(correo, organizador ? "Este correo ya tiene cuenta en RIFF. Inicia sesión como organizador con esa misma contraseña." : "Ya existe una cuenta con este correo. Inicia sesión.");
+      aviso("Te llevamos a iniciar sesión…");
+      return setTimeout(() => ir((organizador ? "org-" : "") + "iniciar-sesion.html"), 2200);
+    }
+    if (error) return errorCampo(clave, error.message);
     if (!data.session) { // por si la confirmación por correo sigue activa
       aviso("Revisa tu correo para confirmar la cuenta"); return setTimeout(() => ir((organizador ? "org-" : "") + "iniciar-sesion.html?nuevo=1"), 2000);
     }
@@ -390,12 +397,26 @@ pantallas["crear-cuenta-valido"] = () => ir("crear-cuenta.html");
 pantallas["org-crear-cuenta-valido"] = () => ir("org-crear-cuenta.html");
 
 // A dónde va cada persona al entrar
+// Un mismo correo sirve para las dos partes: se entra por el lado que la persona eligió
 async function entrarSegunRol(organizador) {
   _perfil = undefined;
+  if (organizador) {
+    const { nuevo } = await asegurarOrganizador();
+    return ir(nuevo ? "org-verificacion.html" : "org-panel.html");
+  }
   const p = await perfil();
-  if (p?.rol === "organizador") return ir("org-panel.html");
-  if (organizador) aviso("Esta cuenta es de público, te llevamos a tu feed");
   ir(p?.generos?.length ? "feed.html" : "vincular-gustos.html");
+}
+// Si la cuenta aún no tiene perfil de organizador (se creó para descubrir eventos), se le crea uno
+async function asegurarOrganizador(u) {
+  u = u || (await usuario());
+  const { data } = await sb.from("organizadores").select("*").eq("id", u.id).maybeSingle();
+  if (data) return { org: data, nuevo: false };
+  const p = await perfil().catch(() => null);
+  const nombre = [p?.nombre, p?.apellido].filter(Boolean).join(" ").trim() || (u.email || "").split("@")[0];
+  const r = await sb.from("organizadores").insert({ id: u.id, nombre, tipo: "organizador", correo: u.email }).select().single();
+  if (r.error) throw r.error;
+  return { org: r.data, nuevo: true };
 }
 const errorCorreo = (error) =>
   /rate|seconds|too many|security purposes/i.test(error.message) ? "Ya te enviamos un correo hace poco. Espera un minuto y vuelve a intentarlo."
@@ -795,11 +816,10 @@ pantallas["busqueda-escribir"] = async () => {
 };
 pantallas["busqueda-filtros"] = async () => {
   const contenido = $(".contenido", pantalla);
-  const busqueda = $(".busqueda", contenido);
+  $(".busqueda", contenido)?.remove(); // la búsqueda ya está en el feed: aquí solo filtros
   const ultima = (() => { try { return JSON.parse(localStorage.getItem("riff_busquedas") || "[]"); } catch { return []; } })();
   const q = params.get("q") || "";
-  $("span", busqueda).textContent = q || "Busca un evento, artista o venue";
-  busqueda.href = "busqueda-escribir.html" + (q ? "?q=" + encodeURIComponent(q) : "");
+  const recientesTitulo = $("p.p12b", contenido); if (recientesTitulo) recientesTitulo.classList.remove("mt16");
   const recientes = $(".chips.carril", contenido);
   recientes.innerHTML = ultima.map((t) => `<a class="chip pequeno" style="height:40px;font-size:14px" href="${urlResultados({ q: t, generos: [], formatos: [], venues: [] })}">${esc(t)}</a>`).join("") || '<span class="p12 suave">Aún no has buscado nada</span>';
   const [gChips, fChips, vChips] = $$(".chips:not(.carril)", contenido);
@@ -896,7 +916,7 @@ pantallas["evento"] = async () => {
     if (navigator.share) { try { await navigator.share(datos); } catch {} }
     else { try { await navigator.clipboard.writeText(location.href); aviso("Link copiado. Pégalo donde quieras."); } catch { aviso(location.href); } }
   };
-  if (bCompartir) bCompartir.onclick = compartir;
+  bCompartir?.remove(); // ya está el botón de compartir arriba a la derecha
   $$(".nav .der a", pantalla).forEach((a) => (a.onclick = compartir));
   if (bMapa) bMapa.href = "mapa.html?id=" + ev.id;
   const comprar = $(".pie .boton", pantalla);
@@ -965,7 +985,7 @@ async function pantallaCalendario() {
       const clases = ["d", fecha < new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()) ? "pasado" : "", fecha.toDateString() === hoy.toDateString() ? "hoy" : "", porDia[d] ? "marcado" : ""].join(" ");
       celdas += porDia[d] ? `<a class="${clases}" href="evento.html?id=${porDia[d][0].id}">${d}</a>` : `<span class="${clases}">${d}</span>`;
     }
-    const proximos = gs.filter((g) => new Date(g.eventos.fecha_fin || g.eventos.fecha) > hoy - 3 * 3600e3);
+    const proximos = gs.filter(vigente);
     contenido.innerHTML = `<h1 class="h1" style="margin-top:20px">mi calendario</h1>
       <div class="tarjeta pad mt16" style="background:linear-gradient(160deg,rgba(118,91,163,.35),rgba(99,56,102,.2))">
         <div class="fila entre" style="padding:0 16px 16px"><button class="boton-circulo" data-mes="-1" aria-label="Mes anterior" style="width:36px;height:36px">‹</button><span class="h4">${esc(nombreMes)}</span><button class="boton-circulo" data-mes="1" aria-label="Mes siguiente" style="width:36px;height:36px">›</button></div>
@@ -986,7 +1006,7 @@ pantallas["mis-guardados"] = async () => {
   const contenido = $(".contenido", pantalla);
   const pintar = async () => {
     _guardados = undefined;
-    const gs = (await guardados()).filter((g) => new Date(g.eventos.fecha_fin || g.eventos.fecha) > Date.now() - 3 * 3600e3);
+    const gs = (await guardados()).filter(vigente);
     const semana = gs.filter((g) => new Date(g.eventos.fecha) - Date.now() < 7 * 864e5), luego = gs.filter((g) => !semana.includes(g));
     contenido.innerHTML = gs.length ? `<p class="p12 suave">${gs.length} evento${gs.length === 1 ? "" : "s"} guardado${gs.length === 1 ? "" : "s"} · ${semana.length} esta semana</p>
       ${semana.length ? `<h2 class="h3 mt16">esta semana</h2><div class="lista mt12">${semana.map((g) => filaEvento(g.eventos, true)).join("")}</div>` : ""}
@@ -1168,7 +1188,7 @@ async function pantallaPerfil() {
     lapiz.innerHTML = ic("check", "s22");
     lapiz.onclick = async () => { const [a, b] = $$("input", caja); await guardarPerfil({ nombre: a.value.trim(), apellido: b.value.trim() }); location.reload(); };
   };
-  const proximos = gs.filter((g) => new Date(g.eventos.fecha) > Date.now());
+  const proximos = gs.filter(vigente);
   const semana = proximos.filter((g) => new Date(g.eventos.fecha) - Date.now() < 7 * 864e5).length;
   const filas = $$(".menu-fila", pantalla);
   $(".p12", filas[0]).textContent = `${proximos.length} evento${proximos.length === 1 ? "" : "s"} · ${semana} esta semana`;
@@ -1241,9 +1261,9 @@ pantallas["org-notificaciones"] = () => pantallaNotificaciones({ organizador: tr
 // =====================================================================
 async function miOrganizador() {
   const u = await exigirSesion("org-iniciar-sesion.html");
-  const { data } = await sb.from("organizadores").select("*").eq("id", u.id).maybeSingle();
-  if (!data) { aviso("Esta cuenta no es de organizador"); setTimeout(() => ir("feed.html"), 1500); throw new Error("no es organizador"); }
-  return data;
+  const { org, nuevo } = await asegurarOrganizador(u);
+  if (nuevo && pantalla.id !== "org-verificacion") { ir("org-verificacion.html"); throw new Error("perfil de organizador nuevo"); }
+  return org;
 }
 async function subirArchivo(bucket, archivo, carpeta) {
   const nombre = `${carpeta}/${Date.now()}-${archivo.name.normalize("NFD").replace(/[^\w.-]+/g, "-")}`;
@@ -1319,15 +1339,15 @@ pantallas["org-panel"] = async () => {
   const lista = $(".lista", pantalla);
   if (!evs?.length) { lista.innerHTML = `<div class="tarjeta pad mensaje-vacio"><p class="p14b">Aún no has publicado eventos</p><p class="p12 suave mt8">Toca «+ Publicar nuevo evento» para empezar.</p></div>`; return; }
   lista.innerHTML = evs.map((e) => { const [clase, texto] = ESTADOS[e.estado]; const m = porEvento[e.id] || { vistas: 0, guardados: 0 };
-    const b = (txt, href, extra = "") => `<a class="boton secundario p12b ${extra}" href="${href}" style="height:42px;font-size:12px">${txt}</a>`;
+    const b = (txt, href, extra = "") => `<a class="boton secundario p12b ${extra}" href="${href}">${txt}</a>`;
     return `<div class="tarjeta pad ${e.estado === "rechazado" ? "borde-peligro" : ""}" ${e.estado === "cancelado" ? 'style="opacity:.6"' : ""}>
       <div class="fila g12"><span class="miniatura" style="width:64px;height:64px;border-radius:8px;background:url('${imagen(e.portada)}') center/cover;flex-shrink:0"></span>
       <div class="flex1" style="min-width:0"><span class="badge ${clase}">${texto}</span><p class="p14b mt8 elipsis" style="font-size:15px">${esc(e.titulo)}</p><p class="p12 suave">${esc(fFecha(e))}</p></div></div>
       ${e.estado === "rechazado" ? `<p class="p12 coral mt12">Motivo: ${esc(e.motivo_rechazo || "revisa los datos")}</p>` : `<p class="p12 suave mt12">${e.estado === "en revision" ? "Enviado " + hace(e.created_at) + " · respuesta en 48 h" : `${m.vistas} vistas · ${m.guardados} guardados (7 días)`}</p>`}
-      <div class="fila g6 mt12">${e.estado === "publicado" ? b("Métricas", "org-metricas.html?id=" + e.id) : ""}${e.estado === "en revision" ? b("Ver estado", "org-en-revision.html?id=" + e.id) : ""}
+      <div class="acciones-org mt12">${e.estado === "publicado" ? b("Métricas", "org-metricas.html?id=" + e.id) : ""}${e.estado === "en revision" ? b("Ver estado", "org-en-revision.html?id=" + e.id) : ""}
         ${e.estado !== "cancelado" ? b(e.estado === "rechazado" ? "Corregir" : "Editar", "org-evento-paso-1.html?editar=" + e.id, e.estado === "rechazado" ? "primario" : "") : ""}
         ${b("Duplicar", "org-evento-paso-1.html?duplicar=" + e.id)}
-        ${e.estado !== "cancelado" ? `<button class="boton secundario p12b coral" data-cancelar="${e.id}" style="height:42px;font-size:12px">Cancelar</button>` : ""}</div></div>`; }).join("");
+        ${e.estado !== "cancelado" ? `<button class="boton secundario p12b coral" data-cancelar="${e.id}">Cancelar</button>` : ""}</div></div>`; }).join("");
   lista.onclick = async (ev) => {
     const b = ev.target.closest("[data-cancelar]"); if (!b) return;
     if (await alerta({ titulo: "¿Cancelar este evento?", texto: "Dejará de verse en el feed, el mapa y los filtros. Esta acción no se puede deshacer.", cancelar: "Volver", aceptar: "Cancelar evento", clase: "coral" })) {
@@ -1337,14 +1357,80 @@ pantallas["org-panel"] = async () => {
 };
 pantallas["org-panel-cancelar"] = () => ir("org-panel.html");
 
+// ---------- ubicar una dirección de Bogotá ----------
+// Las direcciones colombianas dicen en qué cruce queda el lugar: «Calle 174 # 8-30» = Calle 174 con Carrera 8.
+// Se buscan las dos calles en OpenStreetMap y se toma el punto donde se cruzan.
+const VIAS = [[/^(avenida\s+calle|av\.?\s*calle|ac)\b\.?/i, "Avenida Calle", "calle"], [/^(avenida\s+carrera|av\.?\s*carrera|ak)\b\.?/i, "Avenida Carrera", "carrera"],
+  [/^(calle|cll|cl|clle)\b\.?/i, "Calle", "calle"], [/^(carrera|cra|kra|kr|cr|carerra|crr)\b\.?/i, "Carrera", "carrera"],
+  [/^(diagonal|diag|dg)\b\.?/i, "Diagonal", "calle"], [/^(transversal|transv|trans|tv|tr)\b\.?/i, "Transversal", "carrera"]];
+function partirDireccion(texto) {
+  const t = texto.trim().replace(/\s+/g, " ");
+  for (const [re, nombre, eje] of VIAS) {
+    const m = t.match(re); if (!m) continue;
+    const d = t.slice(m[0].length).trim().match(/^(\d+\s?[a-z]?(?:\s?bis)?(?:\s?[a-z](?=\s|#|n|$))?)\s*(sur|este)?\s*(?:#|no\.?|n[°º.]?|n[uú]mero)?\s*(\d+\s?[a-z]?(?:\s?bis)?)\s*(?:-\s*\d+)?\s*(sur|este)?/i);
+    if (!d) return null;
+    const limpio = (x) => x.replace(/\s+/g, " ").trim().replace(/^(\d+)\s?([a-z])\b/i, (_, n, l) => n + l.toUpperCase()).replace(/bis/i, "Bis");
+    const sur = /sur/i.test((d[2] || "") + (d[4] || ""));
+    return { principal: `${nombre} ${limpio(d[1])}${sur && eje === "calle" ? " Sur" : ""}`, cruce: `${eje === "calle" ? "Carrera" : "Calle"} ${limpio(d[3])}${sur && eje === "carrera" ? " Sur" : ""}` };
+  }
+  return null;
+}
+const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
+async function nominatim(q, caja = "-74.25,4.85,-73.98,4.45", extra = "") {
+  const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=co&viewbox=${caja}&bounded=1&q=${encodeURIComponent(q + ", Bogotá")}${extra}`);
+  return r.ok ? r.json() : [];
+}
+const lineasVia = (rs) => rs.filter((r) => r.class === "highway").flatMap((r) => { const g = r.geojson || {}; return g.type === "LineString" ? [g.coordinates] : g.type === "MultiLineString" ? g.coordinates : []; });
+function cruceDeVias(A, B) {
+  const KX = 111320 * 0.9967, KY = 110574, xy = ([lo, la]) => [lo * KX, la * KY];
+  const cerca = (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1))); const q = [a[0] + t * dx, a[1] + t * dy]; return [Math.hypot(p[0] - q[0], p[1] - q[1]), q]; };
+  let mejor = null;
+  for (const la of A) for (let i = 0; i < la.length - 1; i++) { const a1 = xy(la[i]), a2 = xy(la[i + 1]);
+    for (const lb of B) for (let j = 0; j < lb.length - 1; j++) { const b1 = xy(lb[j]), b2 = xy(lb[j + 1]);
+      const d = (a2[0] - a1[0]) * (b2[1] - b1[1]) - (a2[1] - a1[1]) * (b2[0] - b1[0]);
+      if (d) { const t = ((b1[0] - a1[0]) * (b2[1] - b1[1]) - (b1[1] - a1[1]) * (b2[0] - b1[0])) / d, u = ((b1[0] - a1[0]) * (a2[1] - a1[1]) - (b1[1] - a1[1]) * (a2[0] - a1[0])) / d;
+        if (t >= 0 && t <= 1 && u >= 0 && u <= 1) return { d: 0, lat: (a1[1] + t * (a2[1] - a1[1])) / KY, lng: (a1[0] + t * (a2[0] - a1[0])) / KX }; }
+      for (const [p, s1, s2] of [[a1, b1, b2], [a2, b1, b2], [b1, a1, a2], [b2, a1, a2]]) { const [dd, q] = cerca(p, s1, s2); if (!mejor || dd < mejor.d) mejor = { d: dd, lat: (p[1] + q[1]) / 2 / KY, lng: (p[0] + q[0]) / 2 / KX }; } } }
+  return mejor;
+}
+async function ubicarDireccion(dir, venue = "") {
+  const partes = partirDireccion(dir);
+  if (partes) {
+    const A = lineasVia(await nominatim(partes.principal, undefined, "&limit=40&polygon_geojson=1"));
+    if (A.length) {
+      const todos = A.flat(), m = 0.004;
+      const caja = [Math.min(...todos.map((c) => c[0])) - m, Math.max(...todos.map((c) => c[1])) + m, Math.max(...todos.map((c) => c[0])) + m, Math.min(...todos.map((c) => c[1])) - m].join(",");
+      await esperar(1100); // Nominatim pide máximo una consulta por segundo
+      const B = lineasVia(await nominatim(partes.cruce, caja, "&limit=40&polygon_geojson=1"));
+      const c = B.length && cruceDeVias(A, B);
+      if (c && c.d < 350) return { lat: c.lat, lng: c.lng, exacto: true };
+    }
+    await esperar(1100);
+  }
+  for (const q of [dir, venue].filter((x) => x && x.length > 3)) {
+    const r = await nominatim(q, undefined, "&limit=1");
+    if (r[0]) return { lat: +r[0].lat, lng: +r[0].lon, exacto: false };
+    await esperar(1100);
+  }
+  return null;
+}
+
 // ---------- publicar evento (4 pasos, con borrador en el navegador) ----------
 const BORRADOR = "riff_borrador_evento";
 const leerBorrador = () => { try { return JSON.parse(sessionStorage.getItem(BORRADOR)) || {}; } catch { return {}; } };
 const escribirBorrador = (b) => sessionStorage.setItem(BORRADOR, JSON.stringify(b));
+// El asistente cuenta como una sola pantalla en el historial: avanzar y retroceder reemplazan la página
+const reemplazar = (pagina) => { saliendo = true; location.replace(pg + pagina); };
+function flechaAtras(atras) {
+  const [bAtras] = $$(".pie .boton", pantalla);
+  if (bAtras && $$(".pie .boton", pantalla).length > 1) { bAtras.remove(); $(".pie", pantalla).classList.remove("doble"); }
+  const volver = $(".nav [data-volver]", pantalla);
+  if (volver) { volver.setAttribute("data-riff", ""); volver.setAttribute("aria-label", "Paso anterior"); volver.onclick = (e) => { e.preventDefault(); reemplazar(atras); }; }
+}
 function pasoNav(atras, siguiente, validar) {
-  const [bAtras, bSig] = $$(".pie .boton", pantalla);
-  bAtras.href = atras;
-  bSig.onclick = async (e) => { e.preventDefault(); const ok = await validar(); if (ok) ir(siguiente); };
+  flechaAtras(atras);
+  const bSig = $(".pie .boton", pantalla);
+  bSig.onclick = async (e) => { e.preventDefault(); if (bSig.classList.contains("cargando")) return; const ok = await validar(); if (ok) reemplazar(siguiente); };
 }
 pantallas["org-evento-paso-1"] = async () => {
   const org = await miOrganizador();
@@ -1370,17 +1456,25 @@ pantallas["org-evento-paso-1"] = async () => {
   campos[1].querySelector("label").textContent = "Artistas u organizadores (opcional)";
   const artistas = campoReal(campos[1], { placeholder: "Ej. @bambulebta, DJ invitado", valor: b.artistas || "" });
   const portadaDiv = $("div[style*='height:140px']", campos[2]);
-  let portada = b.portada || "assets/foto-bambule.jpg";
-  portadaDiv.style.backgroundImage = `url('${imagen(portada)}')`; portadaDiv.style.cursor = "pointer";
+  let portada = b.portada && !/foto-bambule/.test(b.portada) ? b.portada : null;
+  portadaDiv.style.cursor = "pointer"; portadaDiv.setAttribute("role", "button"); portadaDiv.tabIndex = 0;
   const etiqueta = $(".badge", portadaDiv);
+  const pintarPortada = (texto) => {
+    portadaDiv.classList.toggle("portada-vacia", !portada);
+    portadaDiv.style.backgroundImage = portada ? `url('${imagen(portada)}')` : "none";
+    etiqueta.lastChild.textContent = " " + (texto || (portada ? "Cambiar portada" : "Añadir portada · toca para elegir una imagen"));
+  };
+  pintarPortada();
   portadaDiv.onclick = async () => {
     const f = await elegirArchivo("image/*"); if (!f) return;
-    etiqueta.lastChild.textContent = "Subiendo…";
-    try { portada = await subirArchivo("portadas", f, org.id); portadaDiv.style.backgroundImage = `url('${portada}')`; etiqueta.lastChild.textContent = "Cambiar portada"; }
-    catch { etiqueta.lastChild.textContent = "No se pudo subir, toca para intentar"; }
+    pintarPortada("Subiendo…");
+    try { portada = await subirArchivo("portadas", f, org.id); pintarPortada(); }
+    catch { pintarPortada("No se pudo subir, toca para intentar"); }
   };
+  portadaDiv.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); portadaDiv.click(); } };
   pasoNav("org-panel.html", "org-evento-paso-2.html?seguir=1", () => {
     if (!titulo.value.trim()) { errorCampo(titulo, "Escribe el nombre del evento"); return false; }
+    if (!portada) { aviso("Añade la portada del evento"); portadaDiv.classList.add("portada-error"); return false; }
     escribirBorrador({ ...leerBorrador(), titulo: titulo.value.trim(), artistas: artistas.value.trim(), portada });
     return true;
   });
@@ -1405,31 +1499,44 @@ pantallas["org-evento-paso-2"] = async () => {
   const fecha = campoReal(cFecha, { tipo: "date", valor: fechaLocal ? `${fechaLocal.getFullYear()}-${dos(fechaLocal.getMonth() + 1)}-${dos(fechaLocal.getDate())}` : "" });
   const hora = campoReal(cHora, { tipo: "time", valor: fechaLocal ? `${dos(fechaLocal.getHours())}:${dos(fechaLocal.getMinutes())}` : "20:00" });
   fecha.min = new Date().toISOString().slice(0, 10);
-  let pos = b.lat ? { lat: b.lat, lng: b.lng } : null;
+  let pos = b.lat ? { lat: b.lat, lng: b.lng } : null, manual = false, ubicada = b.lat ? (b.direccion || "") : null;
   const L = await cargarLeaflet();
   const mapa = mapaBase(L, mini, pos || BOGOTA, pos ? 15 : 11);
   const marca = L.marker([(pos || BOGOTA).lat, (pos || BOGOTA).lng], { draggable: true }).addTo(mapa);
-  marca.on("dragend", () => (pos = marca.getLatLng()));
-  mapa.on("click", (e) => { pos = e.latlng; marca.setLatLng(e.latlng); });
-  const buscar = async () => {
-    if (dir.value.trim().length < 5) return;
-    try {
-      const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=co&q=${encodeURIComponent(dir.value + ", Bogotá")}`).then((x) => x.json());
-      if (r[0]) { pos = { lat: +r[0].lat, lng: +r[0].lon }; marca.setLatLng(pos); mapa.setView(pos, 16); ayuda.textContent = "Encontramos la dirección. Arrastra el pin si no es exacto."; }
-      else ayuda.textContent = "No encontramos la dirección: toca el mapa para ubicar el lugar.";
-    } catch { ayuda.textContent = "Toca el mapa para ubicar el lugar."; }
+  const fijar = (p) => { pos = { lat: +p.lat, lng: +p.lng }; marca.setLatLng(pos); };
+  marca.on("dragend", () => { fijar(marca.getLatLng()); manual = true; ubicada = dir.value.trim(); ayuda.textContent = "Listo, usaremos el punto del pin."; });
+  mapa.on("click", (e) => { fijar(e.latlng); manual = true; ubicada = dir.value.trim(); ayuda.textContent = "Listo, usaremos el punto del pin."; });
+  let buscando = null;
+  const buscar = () => {
+    const texto = dir.value.trim();
+    if (texto.length < 5 || texto === ubicada) return buscando || Promise.resolve();
+    ayuda.textContent = "Ubicando la dirección…";
+    buscando = ubicarDireccion(texto, venue.value.trim()).then((r) => {
+      if (dir.value.trim() !== texto) return; // cambió mientras buscábamos
+      ubicada = texto; manual = false;
+      if (r) { fijar(r); mapa.setView(pos, 17); ayuda.textContent = r.exacto ? "Encontramos la dirección. Arrastra el pin si no es exacto." : "Ubicamos la zona aproximada: arrastra el pin hasta el lugar exacto."; }
+      else { pos = null; ayuda.textContent = "No encontramos la dirección: toca el mapa para ubicar el lugar."; }
+    }).catch(() => { ayuda.textContent = "No pudimos buscar la dirección: toca el mapa para ubicar el lugar."; })
+      .finally(() => { buscando = null; });
+    return buscando;
   };
   dir.addEventListener("change", buscar);
+  dir.addEventListener("input", () => { if (!manual) clearTimeout(dir._t), (dir._t = setTimeout(buscar, 900)); });
   setTimeout(() => mapa.invalidateSize(), 200);
-  pasoNav("org-evento-paso-1.html?seguir=1", "org-evento-paso-3.html", () => {
+  pasoNav("org-evento-paso-1.html?seguir=1", "org-evento-paso-3.html", async () => {
     let ok = true;
     if (!venue.value.trim()) errorCampo(venue, "Escribe el nombre del lugar"), (ok = false);
     if (!dir.value.trim()) errorCampo(dir, "Escribe la dirección"), (ok = false);
     if (!fecha.value) errorCampo(fecha, "Elige la fecha"), (ok = false);
     if (!ok) return false;
+    // Nunca se guarda un punto genérico: primero se termina de ubicar la dirección escrita
+    const bSig = $(".pie .boton", pantalla); bSig.classList.add("cargando");
+    if (!manual && dir.value.trim() !== ubicada) await buscar(); else if (buscando) await buscando;
+    bSig.classList.remove("cargando");
+    if (!pos) { errorCampo(dir, "No encontramos esta dirección. Toca el mapa para ubicar el lugar."); mini.scrollIntoView({ behavior: "smooth", block: "center" }); return false; }
     const iso = new Date(`${fecha.value}T${hora.value || "20:00"}:00-05:00`).toISOString();
     if (new Date(iso) < Date.now()) { errorCampo(fecha, "La fecha ya pasó"); return false; }
-    escribirBorrador({ ...leerBorrador(), venue: venue.value.trim(), direccion: dir.value.trim(), fecha: iso, fecha_fin: null, lat: pos?.lat ?? BOGOTA.lat, lng: pos?.lng ?? BOGOTA.lng });
+    escribirBorrador({ ...leerBorrador(), venue: venue.value.trim(), direccion: dir.value.trim(), fecha: iso, fecha_fin: null, lat: pos.lat, lng: pos.lng });
     return true;
   });
 };
@@ -1475,11 +1582,27 @@ pantallas["org-evento-paso-4"] = async () => {
   restr.maxLength = 400;
   const pmu = $(".tarjeta.pad.fila", contenido);
   let permiso = b.permiso || null;
-  $(".p12", pmu).textContent = permiso ? `${permiso.nombre} · Subido` : "Opcional · toca para subir el PDF";
-  pmu.style.cursor = "pointer";
-  pmu.onclick = async () => { const f = await elegirArchivo("application/pdf,image/*"); if (!f) return; $(".p12", pmu).textContent = "Subiendo…"; try { const ruta = await subirArchivo("documentos", f, org.id); permiso = { nombre: f.name, ruta }; $(".p12", pmu).textContent = `${f.name} · ${tamano(f.size)} · Subido`; } catch { $(".p12", pmu).textContent = "No se pudo subir"; } };
-  const [bAtras, bEnviar] = $$(".pie .boton", pantalla);
-  bAtras.href = "org-evento-paso-3.html";
+  const pintarPmu = (estado, detalle = "") => {
+    const [clase, icono] = { vacio: ["", ic("cloud-upload", "s20")], subiendo: ["lila", ic("upload", "s20")], subido: ["rosa-f", ic("check", "s20")], error: ["coral-f", ic("x", "s20")] }[estado];
+    const texto = { vacio: "Opcional · toca para subir el PDF o una foto", subiendo: `${esc(detalle)} · subiendo…`, subido: `${esc(detalle)} · Subido`, error: "No se pudo subir. Toca para intentar de nuevo." }[estado];
+    pmu.className = "tarjeta pad fila g16 doc-" + estado;
+    pmu.setAttribute("aria-busy", String(estado === "subiendo"));
+    pmu.innerHTML = `<span class="icono-caja ${clase}${estado === "vacio" ? " rosa" : ""}">${icono}</span><div class="flex1" style="min-width:0"><p class="p14b" style="font-size:15px">Permiso de la Alcaldía (PMU)</p><p class="p12 suave elipsis">${texto}</p>
+      ${estado === "subiendo" ? '<div class="progreso progreso-indef mt8" style="height:4px"><i></i></div>' : ""}</div>${estado === "subido" ? '<span class="p12b rosa" style="flex-shrink:0">Cambiar</span>' : ""}`;
+  };
+  pintarPmu(permiso ? "subido" : "vacio", permiso?.nombre);
+  pmu.style.cursor = "pointer"; pmu.setAttribute("role", "button"); pmu.tabIndex = 0;
+  pmu.onclick = async () => {
+    if (pmu.getAttribute("aria-busy") === "true") return;
+    const f = await elegirArchivo("application/pdf,image/*"); if (!f) return;
+    if (f.size > 10e6) return aviso("El archivo pesa más de 10 MB");
+    pintarPmu("subiendo", f.name);
+    try { const ruta = await subirArchivo("documentos", f, org.id); permiso = { nombre: f.name, ruta }; escribirBorrador({ ...leerBorrador(), permiso }); pintarPmu("subido", `${f.name} · ${tamano(f.size)}`); }
+    catch { pintarPmu("error"); }
+  };
+  pmu.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pmu.click(); } };
+  flechaAtras("org-evento-paso-3.html");
+  const bEnviar = $(".pie .boton", pantalla);
   if (b.editar) bEnviar.textContent = "Guardar y enviar a revisión";
   bEnviar.onclick = async (e) => {
     e.preventDefault();
@@ -1494,7 +1617,7 @@ pantallas["org-evento-paso-4"] = async () => {
     bEnviar.classList.remove("cargando");
     if (r.error) return aviso("No pudimos enviar el evento: " + r.error.message);
     sessionStorage.removeItem(BORRADOR);
-    ir("org-en-revision.html?id=" + r.data.id);
+    reemplazar("org-en-revision.html?id=" + r.data.id);
   };
 };
 pantallas["org-en-revision"] = async () => {

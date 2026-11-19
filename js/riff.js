@@ -1428,20 +1428,35 @@ function hojaCompartir(ev) {
   const cerrar = () => { capa.classList.remove("abierta"); setTimeout(() => capa.remove(), 260); document.removeEventListener("keydown", tecla); };
   const tecla = (e) => { if (e.key === "Escape") cerrar(); };
   document.addEventListener("keydown", tecla);
-  const copiar = async () => { try { await navigator.clipboard.writeText(url); return true; } catch { return false; } };
+  // Copia en el mismo toque (sin esperar), que es lo que el celular siempre permite
+  const copiarYa = () => {
+    const t = document.createElement("textarea");
+    t.value = url; t.setAttribute("readonly", ""); t.style.cssText = "position:fixed;top:0;left:0;opacity:0;font-size:16px";
+    document.body.appendChild(t); t.focus(); t.select(); t.setSelectionRange(0, url.length);
+    let ok = false; try { ok = document.execCommand("copy"); } catch {}
+    t.remove();
+    return ok;
+  };
+  const copiar = async () => { if (copiarYa()) return true; try { await navigator.clipboard.writeText(url); return true; } catch { return false; } };
   capa.onclick = async (e) => {
     if (e.target.closest("[data-cerrar]")) return cerrar();
     const op = e.target.closest("[data-op]")?.dataset.op; if (!op) return;
     if (op === "whatsapp") window.open("https://wa.me/?text=" + encodeURIComponent(mensaje), "_blank", "noopener");
     else if (op === "mensajes") location.href = "sms:?&body=" + encodeURIComponent(mensaje);
     else if (op === "instagram") {
-      // Instagram no deja pegar un enlace en un chat desde una página web: se copia el enlace y se abre la app en los mensajes
-      const ok = await copiar();
-      aviso(ok ? "Enlace copiado. Pégalo en un chat de Instagram." : url);
+      // Instagram no deja pegar un enlace en un chat desde una página web: se copia el enlace
+      // y se abre la app directo en los mensajes (instagram://direct-inbox); ahí se pega en el chat
+      let ok = copiarYa();
+      if (!ok) { try { await navigator.clipboard.writeText(url); ok = true; } catch {} }
+      aviso(ok ? "Enlace copiado · abriendo tus mensajes de Instagram" : url);
       const web = "https://www.instagram.com/direct/inbox/", ua = navigator.userAgent;
-      if (/android/i.test(ua)) location.href = "intent://www.instagram.com/direct/inbox/#Intent;scheme=https;package=com.instagram.android;S.browser_fallback_url=" + encodeURIComponent(web) + ";end";
-      else if (/iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1)) location.href = web; // enlace universal: abre la app si está instalada
-      else window.open(web, "_blank", "noopener");
+      const android = /android/i.test(ua), ios = /iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+      setTimeout(() => {
+        if (android) location.href = "intent://direct-inbox#Intent;scheme=instagram;package=com.instagram.android;S.browser_fallback_url=" + encodeURIComponent(web) + ";end";
+        else if (ios) location.href = "instagram://direct-inbox";
+        else window.open(web, "_blank", "noopener");
+      }, 700);
+      return setTimeout(cerrar, 900);
     } else { const ok = await copiar(); aviso(ok ? "Enlace copiado" : url); }
     cerrar();
   };

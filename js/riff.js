@@ -1435,9 +1435,13 @@ function hojaCompartir(ev) {
     if (op === "whatsapp") window.open("https://wa.me/?text=" + encodeURIComponent(mensaje), "_blank", "noopener");
     else if (op === "mensajes") location.href = "sms:?&body=" + encodeURIComponent(mensaje);
     else if (op === "instagram") {
-      // Instagram no deja compartir enlaces desde una página web: se usa el menú del celular o se copia el enlace
-      if (navigator.share) { try { await navigator.share({ title: ev.titulo, text: texto, url }); } catch {} }
-      else { const ok = await copiar(); aviso(ok ? "Enlace copiado. Pégalo en un mensaje de Instagram." : url); window.open("https://www.instagram.com/direct/inbox/", "_blank", "noopener"); }
+      // Instagram no deja pegar un enlace en un chat desde una página web: se copia el enlace y se abre la app en los mensajes
+      const ok = await copiar();
+      aviso(ok ? "Enlace copiado. Pégalo en un chat de Instagram." : url);
+      const web = "https://www.instagram.com/direct/inbox/", ua = navigator.userAgent;
+      if (/android/i.test(ua)) location.href = "intent://www.instagram.com/direct/inbox/#Intent;scheme=https;package=com.instagram.android;S.browser_fallback_url=" + encodeURIComponent(web) + ";end";
+      else if (/iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1)) location.href = web; // enlace universal: abre la app si está instalada
+      else window.open(web, "_blank", "noopener");
     } else { const ok = await copiar(); aviso(ok ? "Enlace copiado" : url); }
     cerrar();
   };

@@ -122,7 +122,7 @@ async function guardados() {
   if (_guardados) return _guardados;
   const u = await usuario(); if (!u) return (_guardados = []);
   const { data } = await sb.from("guardados").select("*, eventos(*)").eq("usuario_id", u.id);
-  return (_guardados = (data || []).filter((g) => g.eventos).sort((a, b) => new Date(a.eventos.fecha) - new Date(b.eventos.fecha)));
+  return (_guardados = (data || []).filter((g) => g.eventos && g.eventos.estado === "publicado").sort((a, b) => new Date(a.eventos.fecha) - new Date(b.eventos.fecha)));
 }
 // Un guardado sigue vigente hasta 3 horas después de que empieza (o de que termina, si tiene hora de fin)
 const vigente = (g) => new Date(g.eventos.fecha_fin || g.eventos.fecha) > Date.now() - 3 * 3600e3;
@@ -873,7 +873,7 @@ pantallas["evento"] = async () => {
   const id = Number(params.get("id"));
   const ev = id && (await evento(id));
   const contenido = $(".contenido", pantalla);
-  if (!ev) { contenido.innerHTML = `<div class="mensaje-vacio" style="margin-top:140px"><h1 class="h2">evento no encontrado</h1><p class="cuerpo suave mt12">Puede que ya haya pasado o que lo hayan cancelado.</p><a class="boton primario mt24" href="feed.html">Ir al feed</a></div>`; $(".pie", pantalla)?.remove(); return; }
+  if (!ev || ev.estado === "cancelado") { contenido.innerHTML = `<div class="mensaje-vacio" style="margin-top:140px"><h1 class="h2">${ev ? "evento cancelado" : "evento no encontrado"}</h1><p class="cuerpo suave mt12">Puede que ya haya pasado o que lo hayan cancelado.</p><a class="boton primario mt24" href="feed.html">Ir al feed</a></div>`; $(".pie", pantalla)?.remove(); return; }
   document.title = "RIFF · " + ev.titulo;
   metrica(ev.id, "vista");
   const p = await perfil();
@@ -1204,7 +1204,15 @@ async function pantallaPerfil() {
     filas[3].insertBefore(quitar, filas[3].lastElementChild);
   }
   $$(".velo, .alerta", pantalla).forEach((x) => x.remove());
+  // Cambiar de modo: la misma cuenta sirve para publicar eventos
+  const { data: org } = await sb.from("organizadores").select("id").eq("id", p.id).maybeSingle();
+  const modo = document.createElement("a");
+  modo.className = "menu-fila"; modo.href = "org-panel.html";
+  modo.innerHTML = `<span class="icono-caja">${ic("store", "s18")}</span><div class="flex1"><p class="p14b" style="font-size:15px">Cambiar a modo organizador</p><p class="p12 suave">${org ? "Ir a tu panel de eventos" : "Publica eventos como venue, artista u organizador"}</p></div>${ic("chevron-right", "s18")}`;
+  $(".icono-caja .ic", modo).classList.add("rosa");
+  filas[filas.length - 1].after(modo);
   const salir = $(".boton.peligro", pantalla);
+  botonEliminarCuenta(salir, { organizador: !!org });
   salir.onclick = async (e) => {
     e.preventDefault();
     if (await alerta({ titulo: "¿Cerrar sesión?", texto: "Tus eventos guardados y recordatorios seguirán aquí cuando vuelvas a entrar.", aceptar: "Cerrar sesión", clase: "coral", top: 329 })) {
@@ -1223,7 +1231,7 @@ function hace(fecha) {
   if (min < 2880) return "ayer";
   return fDia(fecha);
 }
-const ESTILO_NOTI = { "según tus gustos": ["lila", "suave", ""], "sorpréndeme": ["coral-f", "coral", "borde-coral"], "recordatorio": ["rosa-f", "rosa", ""], "evento aprobado": ["rosa-f", "rosa", ""], "hito alcanzado": ["lila", "suave", ""], "actualiza tu evento": ["coral-f", "coral", "borde-coral"], "bienvenida": ["lila", "suave", ""] };
+const ESTILO_NOTI = { "según tus gustos": ["lila", "suave", ""], "sorpréndeme": ["coral-f", "coral", "borde-coral"], "recordatorio": ["rosa-f", "rosa", ""], "evento aprobado": ["rosa-f", "rosa", ""], "hito alcanzado": ["lila", "suave", ""], "actualiza tu evento": ["coral-f", "coral", "borde-coral"], "bienvenida": ["lila", "suave", ""], "evento cancelado": ["coral-f", "coral", "borde-coral"] };
 async function pantallaNotificaciones({ organizador }) {
   const u = await exigirSesion();
   const contenido = $(".contenido", pantalla);
@@ -1332,6 +1340,7 @@ pantallas["org-panel"] = async () => {
     sb.from("notificaciones").select("id", { count: "exact", head: true }).eq("usuario_id", u.id).eq("leida", false),
   ]);
   const punto = $('a[href="org-notificaciones.html"] i', pantalla); if (punto && !count) punto.style.display = "none";
+  seccionCuentaOrg();
   const porEvento = Object.fromEntries((res || []).map((r) => [r.evento_id, r]));
   const total = (k) => (res || []).reduce((s, r) => s + Number(r[k]), 0);
   const cifras = $$(".metrica .cifra", pantalla);
@@ -1356,6 +1365,56 @@ pantallas["org-panel"] = async () => {
   };
 };
 pantallas["org-panel-cancelar"] = () => ir("org-panel.html");
+
+// ---------- cuenta: cambiar de modo, cerrar sesión y eliminar ----------
+function seccionCuentaOrg() {
+  const contenido = $(".contenido", pantalla);
+  if ($(".cuenta-org", contenido)) return;
+  const caja = document.createElement("div");
+  caja.className = "cuenta-org";
+  caja.innerHTML = `<h2 class="h3 mt32">tu cuenta</h2>
+    <div class="tarjeta mt12" style="padding:0">
+      <a class="menu-fila" href="feed.html"><span class="icono-caja">${ic("user", "s18")}</span><div class="flex1"><p class="p14b" style="font-size:15px">Cambiar a modo público</p><p class="p12 suave">Descubre y guarda eventos con esta misma cuenta</p></div>${ic("chevron-right", "s18")}</a>
+      <button class="menu-fila" type="button" data-salir style="width:100%;background:none;border:0;color:inherit;text-align:left;font:inherit;cursor:pointer"><span class="icono-caja">${ic("log-out", "s18")}</span><div class="flex1"><p class="p14b" style="font-size:15px">Cerrar sesión</p></div></button>
+    </div>
+    <button class="boton peligro mt16" type="button" data-eliminar style="width:100%">Eliminar cuenta</button>`;
+  $$(".icono-caja .ic", caja).forEach((i) => i.classList.add("rosa"));
+  contenido.appendChild(caja);
+  contenido.style.paddingBottom = "48px";
+  $("[data-salir]", caja).onclick = async () => {
+    if (await alerta({ titulo: "¿Cerrar sesión?", texto: "Tus eventos y métricas seguirán aquí cuando vuelvas a entrar.", aceptar: "Cerrar sesión", clase: "coral" })) {
+      await sb.auth.signOut(); ir("selecciona-perfil.html");
+    }
+  };
+  $("[data-eliminar]", caja).onclick = () => eliminarCuenta({ organizador: true });
+}
+// Debajo de «Cerrar sesión» en el perfil
+function botonEliminarCuenta(despuesDe, { organizador }) {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "enlace p14b coral eliminar-cuenta"; b.textContent = "Eliminar cuenta";
+  b.style.cssText = "display:block;margin:20px auto 40px;background:none;border:0;cursor:pointer;color:var(--acento)";
+  despuesDe.after(b);
+  b.onclick = () => eliminarCuenta({ organizador });
+}
+async function eliminarCuenta({ organizador }) {
+  const texto = "Se borrarán tu perfil, tus gustos, tus eventos guardados y tus notificaciones" +
+    (organizador ? ", y también todos los eventos que publicaste con sus métricas" : "") + ". Esta acción no se puede deshacer.";
+  if (!(await alerta({ titulo: "¿Eliminar tu cuenta?", texto, cancelar: "Volver", aceptar: "Eliminar", clase: "coral", top: 260 }))) return;
+  if (!(await alerta({ titulo: "¿Seguro?", texto: "Tu cuenta y todo lo que publicaste se borrarán para siempre de RIFF.", cancelar: "No, volver", aceptar: "Sí, eliminar", clase: "coral", top: 260 }))) return;
+  const u = await usuario(); if (!u) return ir("selecciona-perfil.html");
+  aviso("Eliminando tu cuenta…");
+  // Archivos subidos (portadas y documentos de verificación), si los hay
+  for (const bucket of ["documentos", "portadas"]) {
+    try { const { data } = await sb.storage.from(bucket).list(u.id, { limit: 1000 }); if (data?.length) await sb.storage.from(bucket).remove(data.map((f) => `${u.id}/${f.name}`)); } catch {}
+  }
+  const { error } = await sb.rpc("borrar_mi_cuenta");
+  if (error) return aviso("No pudimos eliminar la cuenta. Intenta de nuevo en un momento.");
+  await sb.auth.signOut().catch(() => {});
+  ["riff_busquedas", "riff_spotify", "riff_spotify_desde", "riff_tutorial", "riff_ubicacion"].forEach((k) => localStorage.removeItem(k));
+  sessionStorage.clear();
+  aviso("Tu cuenta fue eliminada");
+  setTimeout(() => ir("selecciona-perfil.html"), 1200);
+}
 
 // ---------- ubicar una dirección de Bogotá ----------
 // Las direcciones colombianas dicen en qué cruce queda el lugar: «Calle 174 # 8-30» = Calle 174 con Carrera 8.

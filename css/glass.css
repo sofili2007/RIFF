@@ -150,6 +150,7 @@
   transition: opacity 0.2s ease;
 }
 .tabs.con-liquido { isolation: isolate; }
+.tabs.con-liquido :is(button, a).activa::before { display: none; }
 .tabs :is(button, a) { transition: color 0.25s ease; }
 /* Cambiar de sección no hace parpadear la barra: queda fija y solo entra el contenido */
 html:not(.riff-listo) .telefono > .pantalla.con-tabs { opacity: 1; animation: none; }
@@ -163,7 +164,7 @@ html:not(.riff-listo) .telefono > .pantalla.con-tabs > :not(.tabs) { opacity: 0;
 
 /* ---------- Mapa: hoja que se desliza hacia arriba / abajo ---------- */
 .hoja.hoja-mapa {
-  top: 150px; bottom: 90px; padding: 0; display: flex; flex-direction: column; overflow: hidden;
+  top: 112px; bottom: 90px; padding: 0; display: flex; flex-direction: column; overflow: hidden;
   will-change: transform; touch-action: none; user-select: none; -webkit-user-select: none;
 }
 .hoja.hoja-mapa.animando { transition: transform 0.42s cubic-bezier(0.22, 0.9, 0.24, 1); }
@@ -174,6 +175,8 @@ html:not(.riff-listo) .telefono > .pantalla.con-tabs > :not(.tabs) { opacity: 0;
 .hoja-mapa.abierta-hoja .hoja-cuerpo { overflow-y: auto; touch-action: pan-y; scrollbar-width: none; }
 .hoja-mapa .hoja-cuerpo::-webkit-scrollbar { display: none; }
 .hoja-mapa .lista-mapa { margin-top: 0; padding-bottom: 8px; }
+.hoja-mapa .si-abierta, .hoja-mapa.abierta-hoja .si-cerrada { display: none; }
+.hoja-mapa.abierta-hoja .si-abierta { display: inline; }
 
 /* ---------- Detalle del evento: Guardar · Compartir · Ver en mapa ---------- */
 .acciones-evento { display: flex; gap: 8px; }

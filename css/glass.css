@@ -202,7 +202,9 @@ html:not(.riff-listo) .telefono > .pantalla.con-tabs > :not(.tabs) { opacity: 0;
 .card-evento .portada { background-size: cover; background-position: center; background-color: rgba(255, 255, 255, 0.06); }
 
 /* ---------- Tutorial: todo borroso menos lo que se explica ---------- */
-.tuto { position: absolute; inset: 0; z-index: 90; animation: riff-entrar 0.3s ease both; }
+/* La capa no se anima (una animación de opacidad le impide al navegador difuminar lo de atrás); se anima el velo */
+.tuto, .riff-listo .telefono > .pantalla > .tuto { position: absolute; inset: 0; z-index: 90; animation: none; }
+.tuto-velo { animation: riff-entrar 0.3s ease both; }
 .tuto.sale { opacity: 0; transition: opacity 0.25s ease; }
 .tuto-velo {
   position: absolute; inset: 0; background: rgba(16, 3, 16, 0.5);

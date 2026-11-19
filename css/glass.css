@@ -156,7 +156,7 @@
 html:not(.riff-listo) .telefono > .pantalla.con-tabs { opacity: 1; animation: none; }
 html:not(.riff-listo) .telefono > .pantalla.con-tabs > :not(.tabs) { opacity: 0; }
 .riff-listo .telefono > .pantalla.con-tabs { animation: none; }
-.riff-listo .telefono > .pantalla.con-tabs > :not(.tabs):not(.velo):not(.alerta):not(.aviso-flotante):not(.hoja) { animation: riff-entrar 0.3s ease both; }
+.riff-listo .telefono > .pantalla.con-tabs > :not(.tabs):not(.velo):not(.alerta):not(.aviso-flotante):not(.hoja):not(.tuto) { animation: riff-entrar 0.3s ease both; }
 @view-transition { navigation: auto; }
 .tabs { view-transition-name: riff-tabs; }
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.22s; }

@@ -628,12 +628,98 @@ async function pantallaPresupuesto({ alGuardar }) {
   };
   return secundario;
 }
-pantallas["presupuesto"] = () => pantallaPresupuesto({ alGuardar: () => ir("tutorial-1.html") });
+pantallas["presupuesto"] = () => pantallaPresupuesto({ alGuardar: () => ir("feed.html?tutorial=1") });
 pantallas["perfil-presupuesto"] = async () => {
   const cancelar = await pantallaPresupuesto({ alGuardar: () => ir("perfil.html") });
   cancelar.setAttribute("data-riff", ""); cancelar.onclick = () => ir("perfil.html");
 };
-pantallas["tutorial-3"] = async () => { if (await usuario()) guardarPerfil({ tutorial_visto: true }); };
+// ---------- tutorial: 3 pasos sobre las pantallas reales ----------
+// Todo queda borroso menos lo que se explica; el recuadro de texto siempre dentro de la pantalla.
+pantallas["tutorial-1"] = () => ir("feed.html?tutorial=1");
+pantallas["tutorial-2"] = () => ir("feed.html?tutorial=2");
+pantallas["tutorial-3"] = () => ir("mapa.html?tutorial=3");
+const PASOS_TUTORIAL = {
+  1: { titulo: "busca y filtra", texto: "Encuentra eventos por género, formato de acto o tipo de venue.", objetivo: () => $(".contenido .busqueda", pantalla)?.parentElement },
+  2: { titulo: "guarda sin entrar", texto: "Toca el marcador de una card para guardarla y recibir un recordatorio.", objetivo: () => $(".carrusel .card-evento .guardar", pantalla), redondo: true },
+  3: { titulo: "explora el mapa", texto: "Mira qué suena cerca de ti. Desliza la lista hacia arriba para verla completa.", objetivo: () => $(".hoja-mapa", pantalla) },
+};
+function tutorial(paso) {
+  if (!PASOS_TUTORIAL[paso]) return;
+  $(".tuto", pantalla)?.remove();
+  const capa = document.createElement("div");
+  capa.className = "tuto";
+  capa.innerHTML = `<div class="tuto-velo"></div><div class="tuto-aro"></div>
+    <div class="tuto-globo" role="dialog" aria-live="polite"><p class="p12b rosa" data-num></p><h3 class="h3 mt8" data-titulo></h3><p class="p14 mt8" data-texto style="color:rgba(255,255,255,.85)"></p>
+    <div class="fila entre mt16"><button type="button" class="p14b" data-saltar style="padding:12px 4px">Saltar</button>
+    <div class="fila g16"><span class="puntos"><i></i><i></i><i></i></span><button type="button" class="boton primario" data-siguiente style="height:44px;width:auto;padding:0 20px">Siguiente</button></div></div></div>`;
+  pantalla.appendChild(capa);
+  const velo = $(".tuto-velo", capa), aro = $(".tuto-aro", capa), globo = $(".tuto-globo", capa);
+  let actual = null, anim;
+  const W = () => pantalla.offsetWidth, H = () => pantalla.offsetHeight;
+  // Rectángulo del objetivo en coordenadas de la pantalla (funciona con la escala del celular)
+  const medir = (el, redondo) => {
+    const p = pantalla.getBoundingClientRect(), r = el.getBoundingClientRect(), k = p.width / pantalla.offsetWidth || 1;
+    let x = (r.left - p.left) / k, y = (r.top - p.top) / k, w = r.width / k, h = r.height / k;
+    const tabs = $(".tabs", pantalla), limite = tabs ? tabs.offsetTop - 8 : H();
+    if (y + h > limite) h = Math.max(40, limite - y); // la hoja del mapa: solo la parte visible
+    const m = redondo ? 8 : 6;
+    x -= m; y -= m; w += m * 2; h += m * 2;
+    x = Math.max(6, x); w = Math.min(w, W() - 6 - x);
+    return { x, y, w, h, r: redondo ? Math.min(w, h) / 2 : 22 };
+  };
+  const pintar = ({ x, y, w, h, r }) => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W()}" height="${H()}"><path fill-rule="evenodd" fill="#000" d="M0 0H${W()}V${H()}H0Z M${x + r} ${y}H${x + w - r}A${r} ${r} 0 0 1 ${x + w} ${y + r}V${y + h - r}A${r} ${r} 0 0 1 ${x + w - r} ${y + h}H${x + r}A${r} ${r} 0 0 1 ${x} ${y + h - r}V${y + r}A${r} ${r} 0 0 1 ${x + r} ${y}Z"/></svg>`;
+    const url = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+    velo.style.webkitMaskImage = velo.style.maskImage = url;
+    Object.assign(aro.style, { left: x + "px", top: y + "px", width: w + "px", height: h + "px", borderRadius: r + "px" });
+  };
+  const ubicarGlobo = ({ y, h }) => {
+    const gh = globo.offsetHeight, tabs = $(".tabs", pantalla), abajo = (tabs ? tabs.offsetTop : H()) - 12;
+    let top = y + h + 14;
+    if (top + gh > abajo) top = y - 14 - gh; // no cabe debajo: va arriba
+    top = Math.min(Math.max(56, top), abajo - gh);
+    globo.style.top = top + "px";
+  };
+  const mostrar = (n) => {
+    const def = PASOS_TUTORIAL[n], el = def.objetivo();
+    if (!el) return terminar();
+    $("[data-num]", globo).textContent = `${n} de 3`;
+    $("[data-titulo]", globo).textContent = def.titulo;
+    $("[data-texto]", globo).textContent = def.texto;
+    $$(".puntos i", globo).forEach((i, k) => i.classList.toggle("on", k === n - 1));
+    $("[data-siguiente]", globo).textContent = n === 3 ? "Listo" : "Siguiente";
+    const destino = medir(el, def.redondo);
+    cancelAnimationFrame(anim);
+    if (!actual) { actual = destino; pintar(destino); }
+    else { // el hueco se desliza al nuevo objetivo
+      const desde = actual, t0 = performance.now(), dur = 340;
+      const paso = (t) => { const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+        actual = Object.fromEntries(Object.keys(destino).map((c) => [c, desde[c] + (destino[c] - desde[c]) * e])); pintar(actual);
+        if (k < 1) anim = requestAnimationFrame(paso); };
+      anim = requestAnimationFrame(paso);
+    }
+    ubicarGlobo(destino);
+    globo.classList.remove("entra"); void globo.offsetWidth; globo.classList.add("entra");
+    capa.dataset.paso = n;
+  };
+  function terminar() {
+    cancelAnimationFrame(anim);
+    capa.classList.add("sale"); setTimeout(() => capa.remove(), 260);
+    history.replaceState(null, "", location.pathname);
+    usuario().then((u) => u && guardarPerfil({ tutorial_visto: true }));
+  }
+  $("[data-saltar]", capa).onclick = terminar;
+  $("[data-siguiente]", capa).onclick = () => {
+    const n = Number(capa.dataset.paso);
+    if (n === 1) mostrar(2);
+    else if (n === 2) { capa.classList.add("sale"); ir("mapa.html?tutorial=3"); }
+    else terminar();
+  };
+  window.addEventListener("resize", () => capa.isConnected && mostrar(Number(capa.dataset.paso)));
+  mostrar(paso);
+}
+// Arranca cuando la pantalla terminó de aparecer (las animaciones de entrada mueven los elementos)
+const iniciarTutorial = (n) => setTimeout(() => tutorial(n), 750);
 
 // ---------- feed ----------
 pantallas["feed"] = async () => {
@@ -660,6 +746,8 @@ pantallas["feed"] = async () => {
   }
   // tutorial la primera vez
   if (p && !p.tutorial_visto && !sessionStorage.getItem("riff_tutorial")) { sessionStorage.setItem("riff_tutorial", "1"); }
+  const t = Number(params.get("tutorial"));
+  if (t === 1 || t === 2) { $(".contenido", pantalla).scrollTop = 0; $(".carrusel", pantalla).scrollLeft = 0; iniciarTutorial(t); }
 };
 pantallas["feed-cargando"] = () => ir("feed.html");
 pantallas["feed-sin-conexion"] = () => { if (navigator.onLine) ir("feed.html"); };
@@ -1058,6 +1146,7 @@ async function pantallaMapa() {
   const id = Number(params.get("id"));
   if (id && evs.find((e) => e.id === id)) abrir(evs.find((e) => e.id === id));
   pedirUbicacion().then(alUbicar); // siempre se pide la ubicación actual al abrir el mapa
+  if (params.get("tutorial") === "3") iniciarTutorial(3);
   setTimeout(() => mapa.invalidateSize(), 300);
 }
 ["mapa", "mapa-lista", "mapa-pin", "mapa-hoja-completa", "mapa-cluster", "mapa-sin-ubicacion", "mapa-zona-vacia", "mapa-como-llegar"].forEach((id) => (pantallas[id] = id === "mapa" ? pantallaMapa : () => ir("mapa.html")));
@@ -1173,19 +1262,30 @@ pantallas["org-verificacion"] = async () => {
   const tarjetas = $$(".tarjeta.pad.fila", pantalla);
   const claves = ["permiso", "camara", "rut"];
   const nombres = ["Permiso de funcionamiento", "Cámara de comercio", "RUT"];
+  // Cada documento muestra su estado real: sin subir · subiendo · subido · error (los tres iguales)
+  const pintarDoc = (t, i, estado, detalle = "") => {
+    const caja = { vacio: ["", ic("cloud-upload", "s20"), "rosa"], subiendo: ["lila", ic("upload", "s20"), ""], subido: ["rosa-f", ic("check", "s20"), ""], error: ["coral-f", ic("x", "s20"), ""] }[estado];
+    const texto = { vacio: "Toca para subir PDF o foto (máx. 10 MB)", subiendo: `${esc(detalle)} · subiendo…`, subido: `${esc(detalle)} · Subido`, error: "No se pudo subir. Toca para intentar de nuevo." }[estado];
+    t.className = "tarjeta pad fila g16 doc-" + estado;
+    t.setAttribute("aria-busy", String(estado === "subiendo"));
+    t.innerHTML = `<span class="icono-caja ${caja[0]} ${caja[2]}">${caja[1]}</span>
+      <div class="flex1" style="min-width:0"><p class="p14b" style="font-size:15px">${nombres[i]}</p><p class="p12 suave elipsis">${texto}</p>
+      ${estado === "subiendo" ? '<div class="progreso progreso-indef mt8" style="height:4px"><i></i></div>' : ""}</div>
+      ${estado === "subido" ? `<span class="p12b rosa" style="flex-shrink:0">Cambiar</span>` : ""}`;
+  };
   tarjetas.forEach((t, i) => {
-    t.style.cursor = "pointer"; t.classList.remove("subida");
-    $(".p14b", t).textContent = nombres[i];
-    const linea = $(".p12", t);
-    $(".progreso", t)?.remove();
-    linea.textContent = docs[claves[i]] ? `${docs[claves[i]].nombre} · Subido` : "Toca para subir PDF o foto (máx. 10 MB)";
+    t.style.cursor = "pointer"; t.setAttribute("role", "button"); t.tabIndex = 0;
+    const d = docs[claves[i]];
+    pintarDoc(t, i, d ? "subido" : "vacio", d ? `${d.nombre}${d.tamano ? " · " + tamano(d.tamano) : ""}` : "");
     t.onclick = async () => {
+      if (t.getAttribute("aria-busy") === "true") return;
       const f = await elegirArchivo("application/pdf,image/*"); if (!f) return;
       if (f.size > 10e6) return aviso("El archivo pesa más de 10 MB");
-      linea.textContent = `${f.name} · subiendo…`;
-      try { const ruta = await subirArchivo("documentos", f, org.id); docs[claves[i]] = { nombre: f.name, ruta, tamano: f.size }; linea.textContent = `${f.name} · ${tamano(f.size)} · Subido`; }
-      catch (e) { linea.textContent = "No se pudo subir. Toca para intentar de nuevo."; }
+      pintarDoc(t, i, "subiendo", f.name);
+      try { const ruta = await subirArchivo("documentos", f, org.id); docs[claves[i]] = { nombre: f.name, ruta, tamano: f.size }; pintarDoc(t, i, "subido", `${f.name} · ${tamano(f.size)}`); }
+      catch (e) { pintarDoc(t, i, "error"); }
     };
+    t.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); t.click(); } };
   });
   const enviar = $("a.boton.primario", pantalla);
   enviar.onclick = async (e) => {
@@ -1193,29 +1293,13 @@ pantallas["org-verificacion"] = async () => {
     if (!Object.keys(docs).length) return aviso("Sube al menos un documento");
     // MVP: la verificación se aprueba al enviar. La revisión humana queda para después (spec.md).
     await sb.from("organizadores").update({ documentos: docs, estado_verificacion: "verificado" }).eq("id", org.id);
-    ir("org-perfil-publico.html");
+    ir("org-panel.html");
   };
   const rechazo = $("a.tarjeta.borde-peligro", pantalla);
   if (rechazo) { if (org.estado_verificacion === "rechazado") { rechazo.removeAttribute("href"); $("p", rechazo).textContent = "Motivo del rechazo: " + (org.motivo_rechazo || "revisa tus documentos"); } else rechazo.remove(); }
 };
 pantallas["org-verificacion-rechazada"] = () => ir("org-verificacion.html");
-pantallas["org-perfil-publico"] = async () => {
-  const org = await miOrganizador();
-  $("h1", pantalla).textContent = org.nombre.toLowerCase();
-  $("p.p14.suave", pantalla).textContent = `${org.tipo[0].toUpperCase() + org.tipo.slice(1)} · ${org.ubicacion || "Bogotá"}`;
-  const badge = $(".badge.publicado", pantalla);
-  if (badge && org.estado_verificacion !== "verificado") badge.outerHTML = '<span class="badge revision" style="margin-bottom:8px">Verificación pendiente</span>';
-  const campos = $$(".campo", pantalla);
-  const desc = campoReal(campos[0], { area: true, placeholder: "Cuéntale al público qué música suena y tus horarios", valor: org.descripcion });
-  const ubic = campoReal(campos[1], { placeholder: "Dirección y barrio", valor: org.ubicacion });
-  const redes = campoReal(campos[3], { placeholder: "@tuusuario", valor: org.redes });
-  const boton = $(".pie .boton", pantalla);
-  boton.onclick = async (e) => {
-    e.preventDefault();
-    await sb.from("organizadores").update({ descripcion: desc.value.trim(), ubicacion: ubic.value.trim(), redes: redes.value.trim() }).eq("id", org.id);
-    ir("org-panel.html");
-  };
-};
+pantallas["org-perfil-publico"] = () => ir("org-panel.html"); // pantalla retirada: no cumplía ninguna función
 
 const ESTADOS = { publicado: ["publicado", "Publicado"], "en revision": ["revision", "En revisión"], rechazado: ["rechazado", "Rechazado"], cancelado: ["revision", "Cancelado"] };
 pantallas["org-panel"] = async () => {

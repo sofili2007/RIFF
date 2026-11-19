@@ -1025,7 +1025,7 @@ async function pantallaMapa() {
     vista = "lista";
     const u = miUbicacion();
     const ordenados = [...evs].sort((a, b) => (km(a) ?? 999) - (km(b) ?? 999) || new Date(a.fecha) - new Date(b.fecha));
-    cabeza.innerHTML = `<h2 class="h3">${evs.length} eventos ${u ? "cerca de ti" : "en Bogotá"}</h2><p class="p12 suave">${u ? "Del más cercano al más lejano" : "Activa tu ubicación para ordenarlos por cercanía"} · desliza hacia arriba</p>`;
+    cabeza.innerHTML = `<h2 class="h3">${evs.length} eventos ${u ? "cerca de ti" : "en Bogotá"}</h2><p class="p12 suave">${u ? "Del más cercano al más lejano" : "Activa tu ubicación para ordenarlos por cercanía"} · <span class="si-cerrada">desliza hacia arriba</span><span class="si-abierta">desliza hacia abajo para ver el mapa</span></p>`;
     cuerpo.innerHTML = `<div class="lista lista-mapa">${ordenados.map((e) => filaEvento(e, ids.has(e.id))).join("")}</div>`;
     hojaDeslizable.medir(); hojaDeslizable.ir(abrirla ? "abierta" : "cerrada");
   };

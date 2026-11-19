@@ -245,3 +245,17 @@ html:not(.riff-listo) .telefono > .pantalla.con-tabs > :not(.tabs) { opacity: 0;
 .riff-listo .pantalla .contenido > :nth-child(n+6) { animation-delay: 0.15s; }
 .riff-listo .pantalla > .pie { animation-delay: 0.12s; }
 @media (prefers-reduced-motion: reduce) { ::view-transition-old(root), ::view-transition-new(root) { animation: none; } }
+
+/* ---------- Panel del organizador: Métricas · Editar · Duplicar · Cancelar en una sola fila ---------- */
+.acciones-org { display: flex; gap: 6px; }
+.acciones-org .boton {
+  flex: 1 1 0; width: auto; min-width: 0; height: 40px; padding: 0 4px;
+  font: 700 12px/1.2 var(--f-texto); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 12px;
+}
+
+/* ---------- Asistente de evento: portada vacía hasta que el organizador la añade ---------- */
+.portada-vacia { background: rgba(255,255,255,.04) !important; border: 1.5px dashed rgba(255,255,255,.28); display: flex; align-items: center; justify-content: center; }
+.portada-vacia .badge { position: static !important; background: transparent !important; color: var(--texto, #fff); }
+.portada-error { border-color: var(--coral, #ff6b6b); }
+.pie:not(.doble) .boton.primario { width: 100%; }
+.tarjeta.doc-subido { border-color: rgba(255,79,163,.35); }

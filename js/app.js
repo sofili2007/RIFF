@@ -72,4 +72,50 @@ ajustarPantalla();
 window.addEventListener("resize", ajustarPantalla);
 window.addEventListener("orientationchange", () => setTimeout(ajustarPantalla, 300));
 
+// Barra de pestañas (Feed · Mapa · Calendario · Perfil): una gota de vidrio líquido
+// se desliza de una pestaña a otra antes de cambiar de sección.
+(function pestanasLiquidas() {
+  const tabs = document.querySelector(".tabs");
+  if (!tabs) return;
+  const botones = [...tabs.querySelectorAll(":scope > a, :scope > button")];
+  const gota = document.createElement("span");
+  gota.className = "tab-liquido";
+  gota.setAttribute("aria-hidden", "true");
+  tabs.prepend(gota);
+  tabs.classList.add("con-liquido");
+  const caja = (b) => ({ x: b.offsetLeft + (b.offsetWidth - 64) / 2, w: 64 });
+  const colocar = (b) => { if (!b) { gota.style.opacity = "0"; return; } const c = caja(b); gota.style.transform = `translateX(${c.x}px)`; gota.style.width = c.w + "px"; gota.style.opacity = "1"; };
+  let activa = botones.find((b) => b.classList.contains("activa"));
+  colocar(activa);
+  window.addEventListener("resize", () => colocar(activa));
+  const quieto = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  tabs.addEventListener("click", (e) => {
+    const b = e.target.closest("a[href]");
+    if (!b || !botones.includes(b) || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    e.preventDefault();
+    if (b === activa) return;
+    const destino = b.href;
+    activa?.classList.remove("activa"); b.classList.add("activa");
+    if (quieto || !activa) { location.href = destino; return; }
+    // La gota se estira hasta cubrir ambas pestañas y luego se recoge en la nueva (como un líquido)
+    const de = caja(activa), a = caja(b);
+    const izq = Math.min(de.x, a.x), ancho = Math.abs(a.x - de.x) + 64;
+    const anim = gota.animate([
+      { transform: `translateX(${de.x}px)`, width: "64px", borderRadius: "20px" },
+      { transform: `translateX(${izq}px)`, width: ancho + "px", borderRadius: "26px", offset: 0.5 },
+      { transform: `translateX(${a.x}px)`, width: "64px", borderRadius: "20px" },
+    ], { duration: 320, easing: "cubic-bezier(.45,.05,.25,1)", fill: "forwards" });
+    activa = b;
+    let ido = false;
+    const navegar = () => { if (!ido) { ido = true; location.href = destino; } };
+    anim.onfinish = navegar;
+    setTimeout(navegar, 380); // por si el navegador no termina la animación
+  });
+  // Precarga la sección al apuntar o tocar, para que abra al instante
+  botones.forEach((b) => ["pointerenter", "touchstart"].forEach((ev) => b.addEventListener(ev, () => {
+    if (!b.href || b.dataset.precargado) return; b.dataset.precargado = "1";
+    const l = document.createElement("link"); l.rel = "prefetch"; l.href = b.href; document.head.appendChild(l);
+  }, { passive: true, once: true })));
+})();
+
 import(new URL(raiz + "js/riff.js", location.href).href).catch((error) => console.error("RIFF no pudo cargar", error));

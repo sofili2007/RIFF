@@ -35,6 +35,7 @@ const ICONOS = {
   upload: '<path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>',
 };
 Object.assign(ICONOS, ICONOS_MIN); // versión minimalista (trazo fino)
+ICONOS["eye-off"] = '<path d="M3.5 3.5l17 17"/><path d="M10.4 5.6c.5-.1 1-.1 1.6-.1 6 0 9.5 6.5 9.5 6.5a16 16 0 0 1-2.6 3.4M6.6 6.7C4 8.4 2.5 12 2.5 12S6 18.5 12 18.5c1.9 0 3.5-.6 4.9-1.5"/><path d="M10 10.1a2.75 2.75 0 0 0 3.9 3.9"/>';
 aplicarIconos();
 const ic = (nombre, clase = "s18", relleno = false) =>
   `<svg class="ic ${clase}${relleno ? " relleno" : ""}" viewBox="0 0 24 24" fill="${relleno ? "currentColor" : "none"}" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${ICONOS[nombre]}</svg>`;
@@ -198,6 +199,19 @@ function campoReal(campo, { tipo = "text", nombre, placeholder = "", valor = "",
   input.name = nombre || ""; input.placeholder = placeholder; input.value = valor ?? "";
   if (autocomplete) input.autocomplete = autocomplete;
   caja.appendChild(input);
+  if (tipo === "password") { // ver / ocultar contraseña
+    const ojo = document.createElement("button");
+    ojo.type = "button"; ojo.className = "ver-clave"; ojo.setAttribute("aria-label", "Mostrar contraseña"); ojo.setAttribute("aria-pressed", "false");
+    ojo.innerHTML = ic("eye", "s20");
+    ojo.onmousedown = (e) => e.preventDefault(); // no le quita el foco al campo
+    ojo.onclick = () => {
+      const ver = input.type === "password";
+      input.type = ver ? "text" : "password";
+      ojo.innerHTML = ic(ver ? "eye-off" : "eye", "s20");
+      ojo.setAttribute("aria-label", ver ? "Ocultar contraseña" : "Mostrar contraseña"); ojo.setAttribute("aria-pressed", String(ver));
+    };
+    caja.appendChild(ojo);
+  }
   let ayuda = $(".ayuda", campo);
   if (ayuda && ayuda.querySelector(".punto")) ayuda.remove(), (ayuda = null);
   input.ayudaOriginal = ayuda?.textContent || "";
@@ -796,9 +810,18 @@ async function recordarBusqueda(texto) {
   const u = await usuario(); if (u) sb.from("busquedas").insert({ usuario_id: u.id, texto }).then(() => {});
 }
 pantallas["busqueda-escribir"] = async () => {
-  const caja = $(".busqueda", pantalla);
-  caja.innerHTML = `${ic("pin", "s18").replace(ICONOS.pin, '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>')}<input type="search" enterkeyhint="search" placeholder="Busca un evento, artista o venue" autofocus><a class="enlace p14b" href="busqueda-filtros.html">Filtros</a>`;
-  const input = $("input", caja);
+  // Misma barra que en el feed: lupa, campo y botón de filtros al lado
+  const vieja = $(".busqueda", pantalla);
+  const fila = document.createElement("div"); fila.className = "fila g12";
+  fila.innerHTML = `<div class="busqueda">${ic("search", "s18")}<input type="search" enterkeyhint="search" placeholder="Buscar eventos, artistas, venues" autofocus aria-label="Buscar">
+    <button type="button" class="limpiar-busqueda" aria-label="Borrar búsqueda" hidden>${ic("x", "s14")}</button></div>
+    <a class="boton-filtro" href="busqueda-filtros.html" aria-label="Filtros">${ic("sliders-horizontal", "s20")}</a>`;
+  vieja.replaceWith(fila);
+  const caja = $(".busqueda", fila), input = $("input", caja), borrar = $(".limpiar-busqueda", caja);
+  const verBorrar = () => (borrar.hidden = !input.value);
+  input.addEventListener("input", verBorrar);
+  borrar.onmousedown = (e) => e.preventDefault();
+  borrar.onclick = () => { input.value = ""; verBorrar(); input.dispatchEvent(new Event("input")); input.focus(); };
   pantalla.querySelector('div[style*="height:270px"]')?.remove(); // teclado de mentira
   $(".contenido", pantalla).style.bottom = "0";
   const lista = $(".lista", pantalla), titulo = $(".contenido > p.p12", pantalla);
@@ -812,13 +835,13 @@ pantallas["busqueda-escribir"] = async () => {
   input.value = params.get("q") || "";
   input.addEventListener("input", pintar);
   input.addEventListener("keydown", (e) => { if (e.key === "Enter") { recordarBusqueda(input.value); ir(urlResultados({ ...leerFiltros(new URLSearchParams()), q: input.value })); } });
-  pintar(); input.focus();
+  pintar(); verBorrar(); input.focus();
 };
 pantallas["busqueda-filtros"] = async () => {
   const contenido = $(".contenido", pantalla);
   $(".busqueda", contenido)?.remove(); // la búsqueda ya está en el feed: aquí solo filtros
   const ultima = (() => { try { return JSON.parse(localStorage.getItem("riff_busquedas") || "[]"); } catch { return []; } })();
-  const q = params.get("q") || "";
+  let q = params.get("q") || "";
   const recientesTitulo = $("p.p12b", contenido); if (recientesTitulo) recientesTitulo.classList.remove("mt16");
   const recientes = $(".chips.carril", contenido);
   recientes.innerHTML = ultima.map((t) => `<a class="chip pequeno" style="height:40px;font-size:14px" href="${urlResultados({ q: t, generos: [], formatos: [], venues: [] })}">${esc(t)}</a>`).join("") || '<span class="p12 suave">Aún no has buscado nada</span>';
@@ -834,7 +857,17 @@ pantallas["busqueda-filtros"] = async () => {
   const estado = () => ({ q, generos: $$(".sel", gChips).map(textoChip), formatos: $$(".sel", fChips).map(textoChip), venues: $$(".sel", vChips).map(textoChip) });
   const contar = () => { const f = estado(); const n = f.generos.length + f.formatos.length + f.venues.length; aplicar.textContent = `Aplicar filtros (${n}) · ${filtrar(evs, f).length}`; };
   contenido.addEventListener("riff:alternado", contar);
-  limpiar.onclick = () => { $$(".chip.sel", contenido).forEach((c) => c.classList.remove("sel")); contar(); };
+  // Limpiar borra todo (chips y texto buscado) y la flecha vuelve al feed sin filtros
+  let limpio = false;
+  limpiar.onclick = (e) => {
+    e.preventDefault();
+    $$(".chip.sel", contenido).forEach((c) => c.classList.remove("sel"));
+    q = ""; limpio = true;
+    history.replaceState(null, "", location.pathname);
+    contar();
+  };
+  const volver = $(".nav [data-volver]", pantalla);
+  if (volver) { volver.setAttribute("data-riff", ""); volver.onclick = (e) => { e.preventDefault(); if (limpio) { saliendo = true; location.replace(pg + "feed.html"); } else if (history.length > 1 && document.referrer) history.back(); else ir("feed.html"); }; }
   aplicar.onclick = (e) => { e.preventDefault(); ir(urlResultados(estado())); };
   contar();
 };

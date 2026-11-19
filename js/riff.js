@@ -943,12 +943,7 @@ pantallas["evento"] = async () => {
     bGuardar.replaceWith(nuevo);
     pintarMarcador(nuevo, yaGuardado);
   }
-  const compartir = async (e) => {
-    e.preventDefault();
-    const datos = { title: ev.titulo, text: `${ev.titulo} · ${fFecha(ev)} · ${ev.venue}`, url: location.href };
-    if (navigator.share) { try { await navigator.share(datos); } catch {} }
-    else { try { await navigator.clipboard.writeText(location.href); aviso("Link copiado. Pégalo donde quieras."); } catch { aviso(location.href); } }
-  };
+  const compartir = (e) => { e.preventDefault(); hojaCompartir(ev); };
   bCompartir?.remove(); // ya está el botón de compartir arriba a la derecha
   $$(".nav .der a", pantalla).forEach((a) => (a.onclick = compartir));
   if (bMapa) bMapa.href = "mapa.html?id=" + ev.id;
@@ -1398,6 +1393,61 @@ pantallas["org-panel"] = async () => {
   };
 };
 pantallas["org-panel-cancelar"] = () => ir("org-panel.html");
+
+// ---------- compartir un evento (hoja de vidrio con WhatsApp, Instagram, Mensajes y copiar enlace) ----------
+const ICONOS_COMPARTIR = {
+  mensajes: '<path d="M4 5.5h16a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H9l-4.5 3.5V17.5H4A1.5 1.5 0 0 1 2.5 16V7A1.5 1.5 0 0 1 4 5.5z"/><path d="M7.5 10.5h9M7.5 13.5h5.5"/>',
+  whatsapp: '<path d="M3.5 20.5l1.3-4.2A8.5 8.5 0 1 1 8 19.4z"/><path d="M9 8.6c.2-.5.6-.6 1-.6l.9 2-.6.9c.5 1.1 1.4 2 2.6 2.6l.9-.6 2 .9c0 .4-.1.8-.6 1-1.1.6-2.4.3-4.1-1-1.4-1.1-2.4-2.4-2.6-3.6-.1-.6 0-1.2.5-1.6z"/>',
+  instagram: '<rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r=".6" fill="currentColor"/>',
+  copiar: '<rect x="8.5" y="8.5" width="12" height="12" rx="2.5"/><path d="M15.5 8.5V6a2.5 2.5 0 0 0-2.5-2.5H6A2.5 2.5 0 0 0 3.5 6v7A2.5 2.5 0 0 0 6 15.5h2.5"/>',
+};
+const icCompartir = (n) => `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONOS_COMPARTIR[n]}</svg>`;
+function hojaCompartir(ev) {
+  $(".compartir-capa", pantalla)?.remove();
+  const url = new URL(pg + "evento.html?id=" + ev.id, location.href).href;
+  const texto = `${ev.titulo} · ${fFecha(ev)} · ${ev.venue}`;
+  const mensaje = `${texto}\n${url}`;
+  const capa = document.createElement("div");
+  capa.className = "compartir-capa";
+  capa.innerHTML = `<div class="compartir-velo" data-cerrar></div>
+    <div class="compartir-hoja" role="dialog" aria-modal="true" aria-label="Compartir evento">
+      <span class="compartir-asa"></span>
+      <div class="fila g12">
+        <div class="compartir-mini" style="background-image:url('${imagen(ev.portada)}')"></div>
+        <div class="flex1" style="min-width:0"><p class="p14b elipsis" style="font-size:16px">${esc(ev.titulo)}</p><p class="p12 suave elipsis">${esc(url.replace(/^https?:\/\//, ""))}</p></div>
+        <button class="boton-circulo" type="button" data-cerrar aria-label="Cerrar">${ic("x", "s20")}</button>
+      </div>
+      <div class="compartir-linea"></div>
+      <div class="compartir-opciones">
+        ${[["mensajes", "Mensajes"], ["whatsapp", "WhatsApp"], ["instagram", "Instagram"], ["copiar", "Copiar enlace"]].map(([k, t]) =>
+          `<button type="button" class="compartir-op" data-op="${k}"><span class="compartir-boton op-${k}">${icCompartir(k)}</span><span class="p12">${t}</span></button>`).join("")}
+      </div>
+    </div>`;
+  pantalla.appendChild(capa);
+  requestAnimationFrame(() => capa.classList.add("abierta"));
+  const cerrar = () => { capa.classList.remove("abierta"); setTimeout(() => capa.remove(), 260); document.removeEventListener("keydown", tecla); };
+  const tecla = (e) => { if (e.key === "Escape") cerrar(); };
+  document.addEventListener("keydown", tecla);
+  const copiar = async () => { try { await navigator.clipboard.writeText(url); return true; } catch { return false; } };
+  capa.onclick = async (e) => {
+    if (e.target.closest("[data-cerrar]")) return cerrar();
+    const op = e.target.closest("[data-op]")?.dataset.op; if (!op) return;
+    if (op === "whatsapp") window.open("https://wa.me/?text=" + encodeURIComponent(mensaje), "_blank", "noopener");
+    else if (op === "mensajes") location.href = "sms:?&body=" + encodeURIComponent(mensaje);
+    else if (op === "instagram") {
+      // Instagram no deja compartir enlaces desde una página web: se usa el menú del celular o se copia el enlace
+      if (navigator.share) { try { await navigator.share({ title: ev.titulo, text: texto, url }); } catch {} }
+      else { const ok = await copiar(); aviso(ok ? "Enlace copiado. Pégalo en un mensaje de Instagram." : url); window.open("https://www.instagram.com/direct/inbox/", "_blank", "noopener"); }
+    } else { const ok = await copiar(); aviso(ok ? "Enlace copiado" : url); }
+    cerrar();
+  };
+  // Deslizar hacia abajo para cerrar
+  const hoja = $(".compartir-hoja", capa); let y0 = null;
+  hoja.addEventListener("touchstart", (e) => (y0 = e.touches[0].clientY), { passive: true });
+  hoja.addEventListener("touchmove", (e) => { if (y0 == null) return; const d = Math.max(0, e.touches[0].clientY - y0); hoja.style.transform = `translateY(${d}px)`; }, { passive: true });
+  hoja.addEventListener("touchend", (e) => { const d = e.changedTouches[0].clientY - (y0 ?? 0); y0 = null; hoja.style.transform = ""; if (d > 70) cerrar(); });
+  $(".compartir-op", capa).focus({ preventScroll: true });
+}
 
 // ---------- cuenta: cambiar de modo, cerrar sesión y eliminar ----------
 function seccionCuentaOrg() {

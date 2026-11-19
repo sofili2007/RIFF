@@ -276,3 +276,41 @@ html:not(.riff-listo) .telefono > .pantalla.con-tabs > :not(.tabs) { opacity: 0;
   display: grid; place-items: center; color: var(--texto-suave); cursor: pointer; transition: color 0.15s, background 0.15s; }
 .ver-clave:hover, .ver-clave:focus-visible { color: var(--primario); background: rgba(255, 255, 255, 0.06); }
 .ver-clave[aria-pressed="true"] { color: var(--primario); }
+
+/* ---------- Calendario: el día de hoy con evento guardado se lee en negro sobre el círculo ---------- */
+.cal .d.hoy.marcado { color: var(--texto-sobre-primario); }
+
+/* ---------- Hoja para compartir (vidrio líquido) ---------- */
+.compartir-capa { position: absolute; inset: 0; z-index: 80; }
+.compartir-velo { position: absolute; inset: 0; background: rgba(8, 2, 10, 0.45); opacity: 0; transition: opacity 0.22s ease; }
+.compartir-hoja {
+  position: absolute; left: 8px; right: 8px; bottom: 8px; padding: 10px 16px 22px; border-radius: 30px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05)), rgba(32, 18, 36, 0.55);
+  -webkit-backdrop-filter: blur(28px) saturate(170%); backdrop-filter: blur(28px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 0 rgba(255, 255, 255, 0.04), 0 24px 60px rgba(0, 0, 0, 0.5);
+  transform: translateY(110%); transition: transform 0.26s cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+.compartir-capa.abierta .compartir-velo { opacity: 1; }
+.compartir-capa.abierta .compartir-hoja { transform: translateY(0); }
+.compartir-asa { display: block; width: 38px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.28); margin: 0 auto 12px; }
+.compartir-mini { width: 48px; height: 48px; border-radius: 12px; background: center/cover no-repeat rgba(255, 255, 255, 0.08); flex-shrink: 0; border: 1px solid rgba(255, 255, 255, 0.14); }
+.compartir-linea { height: 1px; margin: 16px -16px; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent); }
+.compartir-opciones { display: flex; justify-content: space-between; }
+.compartir-op { width: 76px; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 0; border: 0; background: none; color: var(--texto); cursor: pointer; font: inherit; }
+.compartir-op .p12 { white-space: nowrap; }
+.compartir-boton {
+  width: 60px; height: 60px; border-radius: 20px; display: grid; place-items: center;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.06));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 18px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.compartir-boton .ic { width: 26px; height: 26px; }
+.compartir-op:hover .compartir-boton, .compartir-op:focus-visible .compartir-boton { background: linear-gradient(160deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.1)); }
+.compartir-op:active .compartir-boton { transform: scale(0.94); }
+.compartir-op:focus-visible { outline: none; }
+.op-mensajes { color: #7ee08f; }
+.op-whatsapp { color: #5fe39a; }
+.op-instagram { color: #f27fb8; }
+.op-copiar { color: var(--primario); }

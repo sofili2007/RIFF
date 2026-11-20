@@ -6,7 +6,7 @@
 <title>RIFF · catálogo del design kit</title>
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/components.css">
-<link rel="stylesheet" href="css/kit-glass.css" id="capa-vidrio">
+<link rel="stylesheet" href="css/kit-glass.css">
 <style>
   /* Estilos solo del catálogo (no son parte del kit) */
   .catalogo { max-width: 880px; margin: 0 auto; padding: var(--espacio-8) var(--espacio-4); }
@@ -23,17 +23,11 @@
   pre { margin: var(--espacio-2) 0 0; padding: var(--espacio-3); border-radius: var(--radio-sm); background: #000; color: var(--color-texto-suave); font-size: var(--texto-xs); overflow-x: auto; white-space: pre-wrap; }
   .escala p { margin: var(--espacio-2) 0; }
   body.con-vidrio { background: var(--fondo-profundo); background-attachment: fixed; }
-  .interruptor { position: sticky; top: 12px; z-index: 5; display: flex; gap: 4px; width: max-content; margin-top: var(--espacio-4); padding: 4px; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 999px; background: rgba(30, 10, 32, 0.8); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
-  .interruptor button { height: 36px; padding: 0 14px; border: 0; border-radius: 999px; background: transparent; color: var(--color-texto-suave); font: inherit; font-size: var(--texto-sm); font-weight: 700; cursor: pointer; }
-  .interruptor button[aria-pressed="true"] { background: var(--color-primario); color: var(--color-texto-sobre-primario); }
   .tabla-tokens { width: 100%; border-collapse: collapse; font-size: var(--texto-sm); }
   .tabla-tokens td { padding: var(--espacio-2) var(--espacio-3) var(--espacio-2) 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08); vertical-align: middle; }
   .tabla-tokens td:first-child { width: 72px; }
   .tabla-tokens i { display: block; width: 56px; height: 36px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.14); }
   .fondo-foto { padding: var(--espacio-4); border-radius: 20px; background: url(assets/portada-omar-courtz.jpg) center / cover; display: flex; gap: 8px; }
-  .solo-vidrio { display: none; }
-  body.con-vidrio .solo-vidrio { display: block; }
-  body.con-vidrio .solo-figma { display: none; }
 </style>
 </head>
 <body class="con-vidrio">
@@ -41,13 +35,9 @@
 <main class="catalogo">
   <h1 class="titulo-1">riff · design kit</h1>
   <p class="texto-suave">Catálogo de tokens y componentes. Los valores viven en <code>css/tokens.css</code> y los componentes en <code>css/components.css</code>. Si una fuente se ve como Arial o Impact, no cargó Google Fonts: revisa la conexión a internet.</p>
-  <p class="texto-suave">La app hoy se ve con la capa <b>vidrio líquido</b> (<code>css/kit-glass.css</code>, igual a <code>css/glass.css</code> de la app) encima del kit original de Figma. Usa el interruptor para comparar.</p>
-  <div class="interruptor" role="group" aria-label="Versión del kit">
-    <button type="button" aria-pressed="true" data-version="vidrio">Vidrio líquido (app hoy)</button>
-    <button type="button" aria-pressed="false" data-version="figma">Original de Figma</button>
-  </div>
+  <p class="texto-suave">El kit se ve con la capa <b>vidrio líquido</b>, igual que la app (<code>css/kit-glass.css</code>, la misma capa de <code>css/glass.css</code>).</p>
 
-  <section class="solo-vidrio" id="vidrio-liquido">
+  <section id="vidrio-liquido">
     <h2 class="titulo-2">vidrio líquido</h2>
     <p class="texto-suave">Superficies de vidrio translúcido sobre el fondo morado de la marca: brillo arriba, una línea de luz abajo y un borde fino claro. Los colores de RIFF no cambian. Las capas que flotan (pestañas, hojas, diálogos) desenfocan lo que hay detrás.</p>
 
@@ -283,14 +273,6 @@ variantes: (base = venue) · --genero · --edad · --publicado · --revision · 
     const valor = raiz.getPropertyValue(v).trim();
     return `<div class="muestra"><i style="background:${valor}"></i><p><b>${v}</b><br><span class="texto-suave">${valor}</span></p></div>`;
   }).join("");
-  // Interruptor: ver el kit con la capa de vidrio líquido (como la app hoy) o como el Figma original
-  const capa = document.getElementById("capa-vidrio");
-  document.querySelectorAll(".interruptor button").forEach((b) => b.addEventListener("click", () => {
-    const vidrio = b.dataset.version === "vidrio";
-    capa.disabled = !vidrio;
-    document.body.classList.toggle("con-vidrio", vidrio);
-    document.querySelectorAll(".interruptor button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-  }));
 </script>
 </body>
 </html>

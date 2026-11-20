@@ -26,11 +26,22 @@ export async function iniciarSpotify(desde = "") {
 
 // Géneros de Spotify (en inglés y muy específicos) -> géneros de RIFF
 export const MAPA = [
-  [/reggaeton|reggaetón|urbano latino|perreo|música urbana/, "Reggaetón"], [/trap latino|latin trap/, "Trap latino"],
-  [/trap argentino|argentine trap|rkt/, "Trap argentino"], [/hip hop|hip-hop/, "Hip hop"], [/rap/, "Rap"],
-  [/latin pop|pop latino|latin/, "Pop latino"], [/house/, "House"], [/techno|edm|electro|electronic|electrónica|dance/, "Electrónica"],
-  [/salsa|son cubano|timba|tropical/, "Salsa"], [/cumbia|champeta|vallenato/, "Cumbia"], [/metal/, "Metal"], [/rock|punk|grunge/, "Rock"],
-  [/indie|alternative|alternativ/, "Indie"], [/jazz|bossa/, "Jazz"], [/classical|orchestra|cl[aá]sica|opera|ópera/, "Clásica"], [/urban|urbano/, "Urbano"],
+  [/reggaeton|reggaetón|perreo/, "Reggaetón"], [/dembow/, "Dembow"], [/trap argentino|argentine trap|rkt/, "Trap argentino"],
+  [/trap latino|latin trap/, "Trap latino"], [/urbano latino|música urbana|urban/, "Urbano"], [/hip hop|hip-hop/, "Hip hop"], [/rap/, "Rap"],
+  [/r&b|rnb/, "R&B"], [/soul/, "Soul"], [/funk(?! carioca)|disco/, "Funk"], [/afrobeat|amapiano|afropop|afro pop/, "Afrobeats"],
+  [/k-pop|korean/, "K-pop"], [/latin pop|pop latino/, "Pop latino"], [/bolero/, "Bolero"], [/balada|latin ballad|ballad/, "Balada"],
+  [/tech house/, "Tech house"], [/house/, "House"], [/techno/, "Techno"], [/drum and bass|dnb|jungle/, "Drum and bass"], [/trance/, "Trance"],
+  [/guaracha|aleteo/, "Guaracha"], [/edm|electro|electronic|electrónica|dance/, "Electrónica"],
+  [/salsa|timba/, "Salsa"], [/son cubano|cuban/, "Son cubano"], [/vallenato/, "Vallenato"], [/champeta/, "Champeta"], [/cumbia/, "Cumbia"],
+  [/merengue/, "Merengue"], [/bachata/, "Bachata"], [/reggae|dancehall/, "Reggae"], [/ska/, "Ska"],
+  [/metal/, "Metal"], [/punk|hardcore/, "Punk"], [/rock en espa|latin rock|rock latino|rock argentino|rock colombiano/, "Rock en español"], [/rock|grunge/, "Rock"],
+  [/indie/, "Indie"], [/alternative|alternativ|shoegaze|emo/, "Alternativo"], [/jazz/, "Jazz"], [/blues/, "Blues"], [/bossa/, "Bossa nova"],
+  [/ranchera|mariachi/, "Ranchera"], [/corrido|norte|banda|regional mexican|sierreño/, "Regional mexicano"], [/carranga/, "Carranga"],
+  [/llanera|joropo/, "Llanera"], [/currulao|pacifico|pacífico/, "Pacífico"], [/andina|bambuco|pasillo/, "Música andina"],
+  [/despecho|música popular|musica popular|popular colombian/, "Popular"], [/tango/, "Tango"], [/flamenco/, "Flamenco"], [/trova|cantautor/, "Trova"],
+  [/country|bluegrass/, "Country"], [/folk|folclor|folklore/, "Folclor"], [/opera|ópera/, "Ópera"], [/classical|orchestra|cl[aá]sica|baroque/, "Clásica"],
+  [/soundtrack|anime|video game|score/, "Bandas sonoras"], [/worship|christian|gospel|cristian/, "Cristiana"], [/experimental|ambient|noise/, "Experimental"],
+  [/pop/, "Pop"],
 ];
 
 export async function importarSpotify(code) {

@@ -577,13 +577,38 @@ pantallas["iniciar-sesion"] = () => formularioIngreso({ organizador: false });
 pantallas["org-iniciar-sesion"] = () => formularioIngreso({ organizador: true });
 
 // ---------- gustos ----------
-const GENEROS = ["Trap latino", "Reggaetón", "Urbano", "Trap argentino", "Rap", "Hip hop", "Pop latino", "Electrónica", "House", "Salsa", "Rock", "Metal", "Cumbia", "Indie", "Jazz", "Clásica", "Folclor", "Popular"];
+// Géneros por familia (se muestran agrupados para que la lista larga sea fácil de recorrer)
+const FAMILIAS_GENERO = [
+  ["Urbano", ["Reggaetón", "Trap latino", "Urbano", "Trap argentino", "Dembow", "Rap", "Hip hop", "R&B", "Afrobeats"]],
+  ["Pop", ["Pop latino", "Pop", "Balada", "Bolero", "K-pop"]],
+  ["Tropical", ["Salsa", "Vallenato", "Cumbia", "Champeta", "Merengue", "Bachata", "Son cubano"]],
+  ["Electrónica", ["Electrónica", "Techno", "House", "Tech house", "Drum and bass", "Trance", "Guaracha"]],
+  ["Rock y alternativo", ["Rock", "Rock en español", "Indie", "Alternativo", "Metal", "Punk", "Ska", "Reggae"]],
+  ["Jazz, soul y blues", ["Jazz", "Blues", "Soul", "Funk", "Bossa nova"]],
+  ["Popular y regional", ["Popular", "Ranchera", "Regional mexicano", "Carranga", "Llanera"]],
+  ["Raíces y del mundo", ["Folclor", "Pacífico", "Música andina", "Tango", "Flamenco", "Trova", "Country"]],
+  ["Clásica y otros", ["Clásica", "Ópera", "Bandas sonoras", "Cristiana", "Experimental"]],
+];
+const GENEROS = FAMILIAS_GENERO.flatMap(([, g]) => g);
+// Pinta los chips de géneros con un título pequeño por familia
+function pintarGeneros(contenedor, elegidos = []) {
+  contenedor.innerHTML = "";
+  FAMILIAS_GENERO.forEach(([familia, lista], i) => {
+    const t = document.createElement("p");
+    t.className = "p12 suave";
+    t.style.cssText = `width:100%;margin:${i ? 10 : 0}px 0 0`;
+    t.textContent = familia;
+    contenedor.appendChild(t);
+    lista.forEach((g) => contenedor.appendChild(chipNuevo(g, elegidos.includes(g))));
+  });
+  // Géneros que la persona ya tenía y ya no están en la lista (no se pierden al guardar)
+  elegidos.filter((g) => !GENEROS.includes(g)).forEach((g) => contenedor.appendChild(chipNuevo(g, true)));
+}
 pantallas["gustos-manual"] = async () => {
   await exigirSesion();
   const p = await perfil();
   const chips = $(".chips", pantalla);
-  chips.innerHTML = "";
-  GENEROS.forEach((g) => chips.appendChild(chipNuevo(g, p?.generos?.includes(g))));
+  pintarGeneros(chips, p?.generos || []);
   const [continuar, omitir] = $$(".pie .boton", pantalla);
   const desdePerfil = params.get("desde") === "perfil";
   if (desdePerfil) { continuar.textContent = "Guardar cambios"; omitir.textContent = "Cancelar"; omitir.href = "perfil.html"; }
@@ -1713,7 +1738,7 @@ pantallas["org-evento-paso-3"] = async () => {
   if (!b.fecha) return ir("org-evento-paso-2.html");
   const contenido = $(".contenido", pantalla);
   const [gChips, fChips, vChips] = $$(".chips", contenido);
-  gChips.innerHTML = ""; GENEROS.forEach((g) => gChips.appendChild(chipNuevo(g, b.generos?.includes(g))));
+  pintarGeneros(gChips, b.generos || []);
   fChips.innerHTML = ""; ["DJ set", "En vivo", "Acústico", "Festival", "Orquesta"].forEach((g) => fChips.appendChild(chipNuevo(g, b.formato === g)));
   vChips.innerHTML = ""; ["Club", "Bar", "Teatro", "Al aire libre", "Estadio", "Arena"].forEach((g) => vChips.appendChild(chipNuevo(g, b.tipo_venue === g)));
   let formato = b.formato || null, tipoVenue = b.tipo_venue || null, edad = b.edad || "Todo público";

@@ -35,6 +35,7 @@ const ICONOS = {
   upload: '<path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>',
 };
 Object.assign(ICONOS, ICONOS_MIN); // versión minimalista (trazo fino)
+ICONOS["download"] = '<path d="M12 4.5V15M8 11l4 4 4-4"/><path d="M4.5 14.5V18a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3.5"/>';
 ICONOS["eye-off"] = '<path d="M3.5 3.5l17 17"/><path d="M10.4 5.6c.5-.1 1-.1 1.6-.1 6 0 9.5 6.5 9.5 6.5a16 16 0 0 1-2.6 3.4M6.6 6.7C4 8.4 2.5 12 2.5 12S6 18.5 12 18.5c1.9 0 3.5-.6 4.9-1.5"/><path d="M10 10.1a2.75 2.75 0 0 0 3.9 3.9"/>';
 aplicarIconos();
 const ic = (nombre, clase = "s18", relleno = false) =>
@@ -1264,6 +1265,7 @@ async function pantallaPerfil() {
   modo.innerHTML = `<span class="icono-caja">${ic("store", "s18")}</span><div class="flex1"><p class="p14b" style="font-size:15px">Cambiar a modo organizador</p><p class="p12 suave">${org ? "Ir a tu panel de eventos" : "Publica eventos como venue, artista u organizador"}</p></div>${ic("chevron-right", "s18")}`;
   $(".icono-caja .ic", modo).classList.add("rosa");
   filas[filas.length - 1].after(modo);
+  filaInstalar(modo);
   const salir = $(".boton.peligro", pantalla);
   botonEliminarCuenta(salir, { organizador: !!org });
   salir.onclick = async (e) => {
@@ -1272,6 +1274,29 @@ async function pantallaPerfil() {
       await sb.auth.signOut(); localStorage.removeItem("riff_busquedas"); ir("selecciona-perfil.html");
     }
   };
+}
+// «Instalar RIFF»: pone la app en la pantalla de inicio del celular (PWA, ver js/pwa.js).
+// No sale si la app ya está instalada (abierta desde el ícono).
+function filaInstalar(despuesDe) {
+  const app = window.riffApp;
+  if (!app || app.yaInstalada()) return;
+  const fila = document.createElement("a");
+  fila.className = "menu-fila"; fila.href = "#";
+  fila.innerHTML = `<span class="icono-caja">${ic("download", "s18")}</span><div class="flex1"><p class="p14b" style="font-size:15px">Instalar RIFF</p><p class="p12 suave">Tenla en tu celular como una app</p></div>${ic("chevron-right", "s18")}`;
+  $(".icono-caja .ic", fila).classList.add("rosa");
+  despuesDe.after(fila);
+  fila.onclick = async (e) => {
+    e.preventDefault();
+    if (app.puedeAvisar()) {
+      if (await app.instalar()) aviso("¡Listo! Busca RIFF en tu pantalla de inicio");
+      return;
+    }
+    const texto = app.esIphone()
+      ? "Abre RIFF en Safari, toca el botón Compartir (el cuadrado con la flecha hacia arriba) y elige «Agregar a inicio»."
+      : "Abre el menú del navegador (⋮) y elige «Instalar app» o «Agregar a la pantalla principal».";
+    await alerta({ titulo: "instala riff", texto, cancelar: "Cerrar", aceptar: "Entendido" });
+  };
+  document.addEventListener("riff:instalada", () => fila.remove(), { once: true });
 }
 pantallas["perfil"] = pantallaPerfil;
 pantallas["perfil-cerrar-sesion"] = pantallaPerfil;

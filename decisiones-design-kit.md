@@ -4,7 +4,7 @@ Estas decisiones salen del design system que el equipo ya definió en Figma («R
 
 > Para cambiar algo: se cambia aquí y en el kit, nunca directo en una pantalla.
 
-> **Nov 2026:** la app hoy se ve con la capa **vidrio líquido** encima de este kit. Está al final de este documento («Capa vidrio líquido») y en el catálogo, que tiene un interruptor para comparar con el original de Figma.
+> **Nov 2026:** la app hoy se ve con la capa **vidrio líquido** encima de este kit. Está al final de este documento («Capa vidrio líquido») y en el catálogo.
 
 ## Colores
 

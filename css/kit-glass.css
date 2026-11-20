@@ -1,0 +1,146 @@
+/* =========================================================
+   RIFF · kit-glass.css
+   Capa «Glass Liquid» del design kit (nov 2026).
+   Es la misma capa visual que usa la app (css/glass.css), traducida a las
+   clases del kit. Se carga DESPUÉS de components.css y solo sobrescribe:
+   sin este archivo, el kit vuelve a verse como el Figma original.
+   Idea: superficies de vidrio translúcido (brillo arriba, línea de luz abajo,
+   borde fino claro) sobre el fondo morado de la marca. Los colores de RIFF
+   (rosa #e199d1, lila #765ba3, coral #cb6e74) no cambian.
+   ========================================================= */
+
+:root {
+  /* Superficie de vidrio: degradado blanco muy suave de arriba-izquierda a abajo-derecha */
+  --vidrio: linear-gradient(160deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.05) 42%, rgba(255, 255, 255, 0.025) 100%);
+  /* Línea de luz en el borde inferior */
+  --vidrio-luz: radial-gradient(55% 2px at 50% 100%, rgba(255, 255, 255, 0.55), transparent);
+  --vidrio-borde: rgba(255, 255, 255, 0.14);
+  /* Brillo interior: una línea clara arriba */
+  --vidrio-brillo: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+  --vidrio-sombra: 0 12px 32px -16px rgba(0, 0, 0, 0.6);
+  /* Capas que flotan (pestañas, hojas, diálogos): desenfoque real de lo que hay detrás */
+  --desenfoque: blur(24px) saturate(160%);
+  --vidrio-flotante: linear-gradient(160deg, rgba(70, 40, 72, 0.88), rgba(36, 18, 38, 0.92));
+  /* Selección: rosa translúcido (un solo estado de selección en toda la app) */
+  --rosa-vidrio: linear-gradient(160deg, rgba(225, 153, 209, 0.3), rgba(225, 153, 209, 0.12));
+  --rosa-borde: rgba(225, 153, 209, 0.55);
+  /* Botón primario con volumen */
+  --primario-vidrio: linear-gradient(180deg, #efbde4 0%, #e199d1 55%, #d68bc5 100%);
+  /* Fondo con profundidad para que el vidrio se note */
+  --fondo-profundo:
+    radial-gradient(380px 320px at 0% 0%, rgba(118, 91, 163, 0.5), transparent 70%),
+    radial-gradient(300px 300px at 110% 38%, rgba(225, 153, 209, 0.16), transparent 70%),
+    radial-gradient(360px 360px at 100% 100%, rgba(147, 58, 80, 0.45), transparent 70%),
+    var(--color-fondo);
+  /* Radios más redondos que en Figma */
+  --radio-control-vidrio: 16px;
+  --radio-tarjeta-vidrio: 20px;
+  --radio-flotante: 26px;
+}
+
+/* ---------- Superficies de vidrio ---------- */
+.tarjeta, .tarjeta-evento, .fila-evento, .metrica, .aviso {
+  background: var(--vidrio-luz), var(--vidrio);
+  border: 1px solid var(--vidrio-borde);
+  box-shadow: var(--vidrio-brillo), var(--vidrio-sombra);
+}
+.tarjeta, .tarjeta-evento { border-radius: var(--radio-tarjeta-vidrio); }
+.fila-evento, .metrica { border-radius: 18px; }
+.tarjeta-evento__portada { border-bottom: 1px solid var(--vidrio-borde); }
+/* Avisos de color: el color va en el borde y un tinte suave, no en toda la tarjeta */
+.tarjeta--destacada { border: 1px solid var(--rosa-borde); background: var(--vidrio-luz), linear-gradient(160deg, rgba(225, 153, 209, 0.16), rgba(225, 153, 209, 0.04)); }
+.tarjeta--alerta { border: 1px solid rgba(203, 110, 116, 0.55); background: var(--vidrio-luz), linear-gradient(160deg, rgba(147, 58, 80, 0.22), rgba(147, 58, 80, 0.06)); }
+
+/* ---------- Capas flotantes: vidrio oscuro con desenfoque ---------- */
+.navegacion, .dialogo, .aviso, .hoja-vidrio {
+  backdrop-filter: var(--desenfoque); -webkit-backdrop-filter: var(--desenfoque);
+}
+.dialogo { background: var(--vidrio-flotante); border: 1px solid var(--vidrio-borde); border-radius: var(--radio-tarjeta-vidrio); box-shadow: var(--vidrio-brillo), 0 24px 60px -20px rgba(0, 0, 0, 0.8); }
+.aviso { background: var(--vidrio-luz), linear-gradient(160deg, rgba(70, 40, 72, 0.85), rgba(36, 18, 38, 0.9)); }
+/* Barra de pestañas flotante: separada 12 px de los bordes, con una gota rosa en la pestaña activa */
+.navegacion {
+  left: 12px; right: 12px; bottom: 12px; height: 66px; padding: 0 6px;
+  border: 1px solid var(--vidrio-borde); border-radius: var(--radio-flotante);
+  background: var(--vidrio-luz), linear-gradient(160deg, rgba(60, 28, 62, 0.72), rgba(30, 10, 32, 0.78));
+  box-shadow: var(--vidrio-brillo), 0 16px 40px -12px rgba(0, 0, 0, 0.7);
+}
+.navegacion__item { position: relative; z-index: 0; justify-content: flex-start; padding-top: 9px; gap: 3px; font-size: 11px; }
+.navegacion__item--activo::before {
+  content: ""; position: absolute; z-index: -1; top: 6px; left: 50%; transform: translateX(-50%);
+  width: 64px; height: 52px; border-radius: 20px;
+  background: var(--vidrio-luz), linear-gradient(160deg, rgba(225, 153, 209, 0.26), rgba(225, 153, 209, 0.08));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), inset 0 0 0 1px rgba(225, 153, 209, 0.38), 0 6px 18px -8px rgba(225, 153, 209, 0.5);
+}
+/* Hoja inferior (mapa, compartir): vidrio con esquinas de 26 px y un asa */
+.hoja-vidrio {
+  padding: 10px 16px 16px; border: 1px solid var(--vidrio-borde); border-radius: var(--radio-flotante);
+  background: var(--vidrio-luz), linear-gradient(170deg, rgba(58, 26, 60, 0.82), rgba(26, 8, 28, 0.9));
+  box-shadow: var(--vidrio-brillo), 0 -12px 40px -16px rgba(0, 0, 0, 0.7);
+}
+.hoja-vidrio__asa { width: 40px; height: 5px; margin: 0 auto 12px; border-radius: 999px; background: rgba(255, 255, 255, 0.3); }
+
+/* ---------- Controles ---------- */
+.boton { border-radius: var(--radio-control-vidrio); transition: transform 0.12s ease, filter 0.12s ease; }
+.boton:active { transform: scale(0.98); }
+.boton:not(.boton--secundario):not(.boton--fantasma):not(.boton--peligro):not(.boton--circulo):not(:disabled) {
+  background: var(--primario-vidrio);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -2px 6px rgba(118, 91, 163, 0.25), 0 10px 26px -10px rgba(225, 153, 209, 0.7);
+}
+.boton:not(.boton--secundario):not(.boton--fantasma):not(.boton--peligro):not(.boton--circulo):not(:disabled):hover { filter: brightness(1.05); }
+.boton--secundario { background: var(--vidrio-luz), var(--vidrio); border: 1px solid var(--vidrio-borde); box-shadow: var(--vidrio-brillo); }
+.boton--secundario:hover { background: var(--vidrio-luz), linear-gradient(160deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.06)); }
+.boton:disabled, .boton--deshabilitado { background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: none; }
+.boton--peligro { border-color: rgba(203, 110, 116, 0.45); }
+/* Botón redondo: relleno translúcido parejo, borde fino y una sola línea de brillo arriba */
+.boton--circulo {
+  background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 6px 16px -10px rgba(0, 0, 0, 0.6);
+}
+.boton--circulo:hover { background: rgba(255, 255, 255, 0.14); }
+/* Sobre fotos: vidrio oscuro con desenfoque para que el ícono se lea sobre cualquier imagen */
+.boton--sobre-foto, .tarjeta-evento__guardar.boton--circulo {
+  background: rgba(16, 3, 16, 0.42);
+  backdrop-filter: blur(12px) saturate(140%); -webkit-backdrop-filter: blur(12px) saturate(140%);
+}
+
+/* Campos y búsqueda */
+.campo__entrada, .busqueda, .segmentado {
+  background: var(--vidrio); border: 1px solid var(--vidrio-borde);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1); border-radius: var(--radio-control-vidrio);
+}
+.campo__entrada:focus, .busqueda:focus-within {
+  border: 1px solid var(--rosa-borde); padding: var(--espacio-3) var(--espacio-4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 0 0 4px rgba(225, 153, 209, 0.14);
+}
+.busqueda:focus-within { padding: 0 var(--espacio-3); }
+.campo--error .campo__entrada { border: 1px solid var(--color-acento); box-shadow: 0 0 0 4px rgba(203, 110, 116, 0.14); }
+.segmentado__opcion { border-radius: 12px; }
+.segmentado__opcion--activa { background: var(--primario-vidrio); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55); }
+
+/* Chips: un solo estado de selección (rosa) en toda la app */
+.chip { background: var(--vidrio); border: 1px solid var(--vidrio-borde); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1); }
+.chip:hover { border-color: var(--rosa-borde); }
+.chip--seleccionado, .chip[aria-pressed="true"], .chip--removible { background: var(--rosa-vidrio); border-color: var(--rosa-borde); color: #fff; }
+
+/* Etiquetas: el rojo se reserva para errores; edad y venue son informativas */
+.etiqueta { background: rgba(255, 255, 255, 0.1); border: 1px solid var(--vidrio-borde); }
+.etiqueta--edad { background: rgba(255, 255, 255, 0.1); border-color: var(--vidrio-borde); }
+.etiqueta--genero { background: rgba(118, 91, 163, 0.55); border-color: rgba(255, 255, 255, 0.12); }
+.etiqueta--rechazado { background: rgba(147, 58, 80, 0.7); border-color: rgba(203, 110, 116, 0.55); }
+.etiqueta--revision { background: rgba(255, 255, 255, 0.1); border-color: var(--vidrio-borde); }
+.etiqueta--publicado { background: var(--color-primario); border-color: rgba(255, 255, 255, 0.25); }
+.etiqueta--dentro, .etiqueta--fuera { background: transparent; }
+.etiqueta--dentro { border-color: var(--color-exito); }
+.etiqueta--fuera { border-color: var(--color-acento); }
+
+/* Cajas de ícono: vidrio tintado en vez de bloques de color */
+.caja-icono { background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14); }
+.caja-icono--primario { background: var(--color-primario); border-color: rgba(255, 255, 255, 0.25); }
+.caja-icono--secundario { background: rgba(118, 91, 163, 0.75); }
+
+/* Progreso y carga */
+.progreso { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.08); }
+.esqueleto { background: linear-gradient(90deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05)); background-size: 200% 100%; }
+
+/* Íconos minimalistas: trazo fino */
+.icono { stroke-width: 1.5; }

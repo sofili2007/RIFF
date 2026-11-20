@@ -4,6 +4,8 @@ Estas decisiones salen del design system que el equipo ya definió en Figma («R
 
 > Para cambiar algo: se cambia aquí y en el kit, nunca directo en una pantalla.
 
+> **Nov 2026:** la app hoy se ve con la capa **vidrio líquido** encima de este kit. Está al final de este documento («Capa vidrio líquido») y en el catálogo, que tiene un interruptor para comparar con el original de Figma.
+
 ## Colores
 
 | Token | Valor | Por qué |
@@ -72,3 +74,31 @@ Múltiplos de 4 px, de `--espacio-1` (4 px) a `--espacio-8` (32 px). El margen l
 | `.aviso` | — | Toast «Guardado en tu calendario». |
 | `.dialogo` | acción principal · acción de peligro | Confirmaciones (salir de RIFF, cerrar sesión, cancelar evento). |
 | `.progreso`, `.esqueleto`, `.caja-icono` | `.caja-icono--primario` · `--secundario` | Progreso de subida, estados de carga y cajas de ícono. |
+
+## Capa vidrio líquido (nov 2026)
+
+Es la capa visual que usa la app hoy. Vive en `css/glass.css` (app) y en `css/kit-glass.css` (la misma capa con las clases del kit, solo la carga `componentes.html`). Se carga después de los estilos base y solo sobrescribe: si se quita, todo vuelve a verse como el Figma original. Los colores de la marca no cambian.
+
+| Token | Valor | Por qué |
+|---|---|---|
+| `--fondo-profundo` | manchas lila, rosa y vino sobre `#100310` | Sobre un fondo plano el vidrio no se nota; con profundidad sí. |
+| `--vidrio` | degradado blanco del 12 % al 2,5 % | Superficie base de tarjetas, filas, métricas, campos, chips y botón secundario. |
+| `--vidrio-luz` | línea blanca suave en el borde inferior | Da la sensación de grosor del vidrio. |
+| `--vidrio-brillo` | línea blanca al 22 % arriba, por dentro | Reflejo del borde superior. |
+| `--vidrio-borde` | blanco al 14 % | Borde fino de todas las superficies de vidrio. |
+| `--vidrio-flotante` + `--desenfoque` | vidrio oscuro + `blur(24px) saturate(160%)` | Pestañas, hojas inferiores y diálogos: desenfocan lo que hay detrás y se leen sobre cualquier fondo. |
+| `--rosa-vidrio` / `--rosa-borde` | rosa translúcido + borde rosa al 55 % | Único estado de selección (chips, pestaña activa, guardado). |
+| `--primario-vidrio` | `#efbde4 → #e199d1 → #d68bc5` | Botón principal con volumen y un leve resplandor rosa. |
+| Radios | controles 16 · filas y métricas 18 · tarjetas 20 · capas flotantes 26 · chips 999 px | Más redondos que en Figma, para que el vidrio se vea suave. |
+
+| Cambio frente al Figma | Por qué |
+|---|---|
+| Chip seleccionado en **rosa** (antes lila) | Un solo color de selección en toda la app; lila queda para la etiqueta de género. |
+| Etiquetas de edad (+18) y venue **neutras** (antes rojas) | El rojo se reserva para errores, rechazos y peligro. |
+| Barra de pestañas **flotante** (12 px de los bordes) con una **gota de vidrio** que se desliza a la pestaña activa | Es el gesto principal de la capa y deja ver el contenido detrás. |
+| Botones redondos sobre fotos en **vidrio oscuro con desenfoque** (`.boton--sobre-foto`) | El ícono se lee sobre cualquier portada. |
+| Hojas inferiores (mapa, compartir) en vidrio con asa (`.hoja-vidrio`) | Mismo lenguaje que las pestañas. |
+| Avisos de color: tiñen el **borde** y un poco el fondo | Una tarjeta entera de color pesaba demasiado. |
+| Íconos de línea con trazo **1,5** (antes 2) | Más livianos, a juego con el vidrio. |
+| «Hoy» del calendario en **rosa**; si ese día hay un evento guardado, el número va en negro | El rojo parecía un error y el número no se veía sobre el círculo. |
+

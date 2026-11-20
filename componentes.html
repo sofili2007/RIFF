@@ -6,6 +6,7 @@
 <title>RIFF · catálogo del design kit</title>
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/kit-glass.css" id="capa-vidrio">
 <style>
   /* Estilos solo del catálogo (no son parte del kit) */
   .catalogo { max-width: 880px; margin: 0 auto; padding: var(--espacio-8) var(--espacio-4); }
@@ -21,13 +22,89 @@
   .componente h3 { margin: 0 0 var(--espacio-2); font-size: var(--texto-base); }
   pre { margin: var(--espacio-2) 0 0; padding: var(--espacio-3); border-radius: var(--radio-sm); background: #000; color: var(--color-texto-suave); font-size: var(--texto-xs); overflow-x: auto; white-space: pre-wrap; }
   .escala p { margin: var(--espacio-2) 0; }
+  body.con-vidrio { background: var(--fondo-profundo); background-attachment: fixed; }
+  .interruptor { position: sticky; top: 12px; z-index: 5; display: flex; gap: 4px; width: max-content; margin-top: var(--espacio-4); padding: 4px; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 999px; background: rgba(30, 10, 32, 0.8); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+  .interruptor button { height: 36px; padding: 0 14px; border: 0; border-radius: 999px; background: transparent; color: var(--color-texto-suave); font: inherit; font-size: var(--texto-sm); font-weight: 700; cursor: pointer; }
+  .interruptor button[aria-pressed="true"] { background: var(--color-primario); color: var(--color-texto-sobre-primario); }
+  .tabla-tokens { width: 100%; border-collapse: collapse; font-size: var(--texto-sm); }
+  .tabla-tokens td { padding: var(--espacio-2) var(--espacio-3) var(--espacio-2) 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08); vertical-align: middle; }
+  .tabla-tokens td:first-child { width: 72px; }
+  .tabla-tokens i { display: block; width: 56px; height: 36px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.14); }
+  .fondo-foto { padding: var(--espacio-4); border-radius: 20px; background: url(assets/portada-omar-courtz.jpg) center / cover; display: flex; gap: 8px; }
+  .solo-vidrio { display: none; }
+  body.con-vidrio .solo-vidrio { display: block; }
+  body.con-vidrio .solo-figma { display: none; }
 </style>
 </head>
-<body>
+<body class="con-vidrio">
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34" /> <circle cx="11" cy="11" r="8" /></symbol><symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M17 3a2 2 0 0 1 2 2v15a1 1 0 0 1-1.496.868l-4.512-2.578a2 2 0 0 0-1.984 0l-4.512 2.578A1 1 0 0 1 5 20V5a2 2 0 0 1 2-2z" /></symbol><symbol id="i-calendar" viewBox="0 0 24 24"><path d="M8 2v3" /> <path d="M16 2v3" /> <rect x="3" y="3" width="18" height="18" rx="2" /> <path d="M3 9h18" /></symbol><symbol id="i-map-pin" viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /> <circle cx="12" cy="10" r="3" /></symbol><symbol id="i-house" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" /> <path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></symbol><symbol id="i-map" viewBox="0 0 24 24"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z" /> <path d="M15 5.764v15" /> <path d="M9 3.236v15" /></symbol><symbol id="i-user" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /> <circle cx="12" cy="7" r="4" /></symbol><symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6" /></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18" /> <path d="m6 6 12 12" /></symbol><symbol id="i-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0" /> <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" /></symbol><symbol id="i-share" viewBox="0 0 24 24"><path d="M12 2v13" /> <path d="m16 6-4-4-4 4" /> <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /></symbol><symbol id="i-sliders-horizontal" viewBox="0 0 24 24"><path d="M10 5H3" /> <path d="M12 19H3" /> <path d="M14 3v4" /> <path d="M16 17v4" /> <path d="M21 12h-9" /> <path d="M21 19h-5" /> <path d="M21 5h-7" /> <path d="M8 10v4" /> <path d="M8 12H3" /></symbol></svg>
 <main class="catalogo">
   <h1 class="titulo-1">riff · design kit</h1>
   <p class="texto-suave">Catálogo de tokens y componentes. Los valores viven en <code>css/tokens.css</code> y los componentes en <code>css/components.css</code>. Si una fuente se ve como Arial o Impact, no cargó Google Fonts: revisa la conexión a internet.</p>
+  <p class="texto-suave">La app hoy se ve con la capa <b>vidrio líquido</b> (<code>css/kit-glass.css</code>, igual a <code>css/glass.css</code> de la app) encima del kit original de Figma. Usa el interruptor para comparar.</p>
+  <div class="interruptor" role="group" aria-label="Versión del kit">
+    <button type="button" aria-pressed="true" data-version="vidrio">Vidrio líquido (app hoy)</button>
+    <button type="button" aria-pressed="false" data-version="figma">Original de Figma</button>
+  </div>
+
+  <section class="solo-vidrio" id="vidrio-liquido">
+    <h2 class="titulo-2">vidrio líquido</h2>
+    <p class="texto-suave">Superficies de vidrio translúcido sobre el fondo morado de la marca: brillo arriba, una línea de luz abajo y un borde fino claro. Los colores de RIFF no cambian. Las capas que flotan (pestañas, hojas, diálogos) desenfocan lo que hay detrás.</p>
+
+    <div class="componente"><h3>Tokens del vidrio · kit-glass.css</h3>
+      <table class="tabla-tokens">
+        <tr><td><i style="background:var(--fondo-profundo)"></i></td><td><b>--fondo-profundo</b><br><span class="texto-suave">Fondo con manchas lila, rosa y vino para que el vidrio se note.</span></td></tr>
+        <tr><td><i style="background:var(--vidrio-luz),var(--vidrio);box-shadow:var(--vidrio-brillo)"></i></td><td><b>--vidrio · --vidrio-luz · --vidrio-brillo</b><br><span class="texto-suave">Superficie base: blanco del 12 % al 2,5 %, línea de luz abajo y brillo arriba.</span></td></tr>
+        <tr><td><i style="background:transparent;border-color:var(--vidrio-borde)"></i></td><td><b>--vidrio-borde</b><br><span class="texto-suave">Blanco al 14 %. Borde de todas las superficies de vidrio.</span></td></tr>
+        <tr><td><i style="background:var(--vidrio-flotante)"></i></td><td><b>--vidrio-flotante · --desenfoque</b><br><span class="texto-suave">Vidrio oscuro con <code>blur(24px)</code> para pestañas, hojas y diálogos.</span></td></tr>
+        <tr><td><i style="background:var(--rosa-vidrio);border-color:var(--rosa-borde)"></i></td><td><b>--rosa-vidrio · --rosa-borde</b><br><span class="texto-suave">El único estado de selección de la app (chips, pestaña activa, guardado).</span></td></tr>
+        <tr><td><i style="background:var(--primario-vidrio);box-shadow:inset 0 1px 0 rgba(255,255,255,.6)"></i></td><td><b>--primario-vidrio</b><br><span class="texto-suave">Botón principal con volumen: rosa más claro arriba.</span></td></tr>
+        <tr><td><i style="background:var(--vidrio);border-radius:16px"></i></td><td><b>Radios</b><br><span class="texto-suave">Controles 16 px · filas y métricas 18 px · tarjetas 20 px · capas flotantes 26 px · chips 999 px.</span></td></tr>
+      </table>
+    </div>
+
+    <div class="componente"><h3>Superficie de vidrio · .tarjeta</h3>
+      <div class="demo columna"><div class="tarjeta"><b>Tarjeta de vidrio</b><p class="texto-suave texto-pequeno" style="margin:4px 0 0">Brillo arriba, línea de luz abajo, borde fino.</p></div></div>
+      <pre>background: var(--vidrio-luz), var(--vidrio);
+border: 1px solid var(--vidrio-borde);
+box-shadow: var(--vidrio-brillo), var(--vidrio-sombra);</pre>
+    </div>
+
+    <div class="componente"><h3>Botones redondos sobre foto · .boton--sobre-foto</h3>
+      <div class="demo"><div class="fondo-foto"><button class="boton boton--circulo boton--sobre-foto" aria-label="Volver"><svg class="icono"><use href="#i-chevron-left"/></svg></button><button class="boton boton--circulo boton--sobre-foto" aria-label="Compartir"><svg class="icono"><use href="#i-share"/></svg></button><button class="boton boton--circulo boton--sobre-foto" aria-label="Guardar"><svg class="icono"><use href="#i-bookmark"/></svg></button></div></div>
+      <pre>&lt;button class="boton boton--circulo boton--sobre-foto"&gt;…&lt;/button&gt;
+&lt;!-- vidrio oscuro con desenfoque: el ícono se lee sobre cualquier imagen --&gt;</pre>
+    </div>
+
+    <div class="componente"><h3>Hoja inferior · .hoja-vidrio (compartir, mapa)</h3>
+      <div class="demo columna"><div class="hoja-vidrio"><div class="hoja-vidrio__asa"></div><p class="titulo-4" style="margin:0 0 12px">compartir</p>
+        <div style="display:grid;gap:8px"><button class="boton boton--secundario">Mensajes</button><button class="boton boton--secundario">WhatsApp</button><button class="boton boton--secundario">Copiar enlace</button></div></div></div>
+      <pre>&lt;div class="hoja-vidrio"&gt;
+  &lt;div class="hoja-vidrio__asa"&gt;&lt;/div&gt;
+  …contenido…
+&lt;/div&gt;</pre>
+    </div>
+
+    <div class="componente"><h3>Barra de pestañas flotante · .navegacion con gota de vidrio</h3>
+      <p class="texto-suave texto-pequeno" style="margin:0 0 8px">Separada 12 px de los bordes, esquinas de 26 px. En la app, la gota rosa se desliza a la pestaña que se toca.</p>
+      <div class="demo columna" style="padding:24px 0"><nav class="navegacion" style="position:static">
+        <a class="navegacion__item navegacion__item--activo" href="#"><svg class="icono icono--grande"><use href="#i-house"/></svg>Feed</a>
+        <a class="navegacion__item" href="#"><svg class="icono icono--grande"><use href="#i-map"/></svg>Mapa</a>
+        <a class="navegacion__item" href="#"><svg class="icono icono--grande"><use href="#i-calendar"/></svg>Calendario</a>
+        <a class="navegacion__item" href="#"><svg class="icono icono--grande"><use href="#i-user"/></svg>Perfil</a></nav></div>
+    </div>
+
+    <div class="componente"><h3>Reglas de la capa</h3>
+      <div class="tarjeta"><ul class="texto-suave" style="margin:0;padding-left:18px;font-size:var(--texto-sm);display:grid;gap:6px">
+        <li>Un solo estado de selección: <b>rosa</b> (antes los chips elegidos eran lila).</li>
+        <li>El rojo es solo para errores y peligro. La edad (+18) y el venue son etiquetas neutras de vidrio.</li>
+        <li>Los avisos de color tiñen el borde y un poco el fondo, no toda la tarjeta.</li>
+        <li>Íconos de línea con trazo de 1,5.</li>
+        <li>El «hoy» del calendario va en rosa; si ese día hay un evento guardado, el número va en negro sobre el círculo rosado.</li>
+        <li>Nada nuevo se pinta directo en una pantalla: se agrega aquí y en <code>css/glass.css</code>.</li>
+      </ul></div>
+    </div>
+  </section>
 
   <section>
     <h2 class="titulo-2">colores</h2>
@@ -206,6 +283,14 @@ variantes: (base = venue) · --genero · --edad · --publicado · --revision · 
     const valor = raiz.getPropertyValue(v).trim();
     return `<div class="muestra"><i style="background:${valor}"></i><p><b>${v}</b><br><span class="texto-suave">${valor}</span></p></div>`;
   }).join("");
+  // Interruptor: ver el kit con la capa de vidrio líquido (como la app hoy) o como el Figma original
+  const capa = document.getElementById("capa-vidrio");
+  document.querySelectorAll(".interruptor button").forEach((b) => b.addEventListener("click", () => {
+    const vidrio = b.dataset.version === "vidrio";
+    capa.disabled = !vidrio;
+    document.body.classList.toggle("con-vidrio", vidrio);
+    document.querySelectorAll(".interruptor button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  }));
 </script>
 </body>
 </html>

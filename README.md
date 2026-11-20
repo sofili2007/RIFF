@@ -28,6 +28,7 @@ RIFF es una app que centraliza y recomienda eventos musicales en vivo en una ciu
 - Mapa real de Bogotá (Leaflet) con tu ubicación, pines de eventos y «Cómo llegar».
 - Organizadores: verificación con documentos, perfil público, publicar evento en 4 pasos (con portada y dirección en el mapa), revisión, panel y métricas reales (vistas, guardados, clics a venta).
 - Base de datos: Supabase (`supabase/esquema.sql`).
+- Se instala en el celular como app (PWA): `manifest.webmanifest`, `sw.js`, `js/pwa.js` e íconos en `assets/app/`. En Android, Perfil → «Instalar RIFF» (o menú ⋮ → «Instalar app»); en iPhone, Safari → Compartir → «Agregar a inicio». Si cambian muchos archivos, suban `VERSION` en `sw.js`.
 
 ## Documentos
 

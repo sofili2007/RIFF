@@ -1,0 +1,25 @@
+{
+  "id": "/",
+  "name": "RIFF · música en vivo en Bogotá",
+  "short_name": "RIFF",
+  "description": "Descubre conciertos y planes de música en vivo en Bogotá según tus gustos y tu presupuesto.",
+  "lang": "es-CO",
+  "dir": "ltr",
+  "start_url": "/index.html?fuente=app",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#100310",
+  "theme_color": "#100310",
+  "categories": ["music", "entertainment", "lifestyle"],
+  "icons": [
+    { "src": "/assets/app/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/app/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/app/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "tu feed", "url": "/pages/feed.html", "icons": [{ "src": "/assets/app/icono-192.png", "sizes": "192x192" }] },
+    { "name": "mapa", "url": "/pages/mapa.html", "icons": [{ "src": "/assets/app/icono-192.png", "sizes": "192x192" }] },
+    { "name": "mis guardados", "url": "/pages/mis-guardados.html", "icons": [{ "src": "/assets/app/icono-192.png", "sizes": "192x192" }] }
+  ]
+}
